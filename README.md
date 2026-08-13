@@ -1,30 +1,19 @@
-# Dashboard Pilotage — V1.9.0
+# Dashboard Pilotage — V1.9.3
 
-Build : 2026-08-13 21:21
+Build : 2026-08-13 21:48
 
-Cette version conserve tous les raccordements existants :
-- urgences ;
-- retards ;
-- interventions ouvertes ;
-- contrôles périodiques ;
-- conformité ménage ;
-- présence agents en temps réel ;
-- charge de travail ;
-- graphiques ;
-- synchronisation toutes les 5 secondes.
+Basé sur la V1.9.2.
 
-Seul le bloc « Planning d'aujourd'hui » a été remplacé pour recopier la logique du vrai `eventsForDate()` de Pilotage :
-- Agenda personnel
-- Réunions / rendez-vous
-- Notes à échéance
-- Maintenance à échéance
-- Demandes direction à échéance
-- Chantiers / GPA à échéance
-- Sécurité / qualité à échéance
-- Contrôles périodiques
-- Préparation salle & café (`pst_room_preps_v106`)
-- Vacances / fermetures
+Nouvelle boîte à liens personnalisés :
+- nombre de liens non limité ;
+- nom personnalisé ;
+- URL personnalisée ;
+- logo/image importé depuis le PC ;
+- logo de secours généré avec les initiales si aucune image ;
+- modification ;
+- suppression ;
+- déplacement vers le haut / bas ;
+- ouverture dans un nouvel onglet ;
+- mémorisation dans le navigateur.
 
-Le module poubelles n'est pas inventé s'il n'est pas exposé au dashboard.
-
-Version visible en bas : V1.9.0
+Tous les raccordements et fonctions de la V1.9.2 sont conservés.

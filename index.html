@@ -116,7 +116,7 @@
 
   <section class="bottom-grid">
     <article class="panel">
-      <div class="panel-head red-head"><h2>TOP 5 URGENCES</h2></div>
+      <div class="panel-head red-head"><h2>TOP 5 URGENCES</h2><button id="chooseTopUrgencies" class="choose-btn">Choisir</button></div>
       <div id="urgentList" class="fast-list"></div>
     </article>
 
@@ -131,7 +131,16 @@
     </article>
   </section>
 
-  <section class="footer-tools">
+  
+  <section class="links-panel">
+    <div class="panel-head blue-head">
+      <h2>RACCOURCIS / LIENS PERSONNALISÉS</h2>
+      <button id="manageLinks" class="choose-btn links-manage-btn">Gérer les liens</button>
+    </div>
+    <div id="customLinksGrid" class="custom-links-grid"></div>
+  </section>
+
+<section class="footer-tools">
     <div>
       <span class="live-dot"></span>
       <strong>Données mises à jour automatiquement</strong>
@@ -144,10 +153,66 @@
 
 
 <footer class="version-footer">
-  <strong>DASHBOARD V1.9.0</strong>
-  <span>Build 2026-08-13 21:21</span>
+  <strong>DASHBOARD V1.9.3</strong>
+  <span>Build 2026-08-13 21:48</span>
   <span>Connexion : Pilotage Service Technique</span>
 </footer>
+
+
+
+<dialog id="linksDialog" class="urgency-dialog links-dialog">
+  <form method="dialog" class="urgency-dialog-box">
+    <div class="urgency-dialog-head">
+      <div>
+        <strong>Gérer mes liens</strong>
+        <small>Ajoute autant de raccourcis que tu veux avec un logo personnalisé.</small>
+      </div>
+      <button value="cancel" class="dialog-close" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="link-form">
+      <input type="hidden" id="editLinkId">
+      <label>Nom du lien
+        <input id="linkName" type="text" placeholder="Ex. Intranet">
+      </label>
+      <label>Adresse du site
+        <input id="linkUrl" type="url" placeholder="https://...">
+      </label>
+      <label>Logo / image
+        <input id="linkLogo" type="file" accept="image/*">
+      </label>
+      <div class="logo-preview-wrap">
+        <img id="linkLogoPreview" alt="" class="link-logo-preview">
+        <span id="linkLogoText">Aucun logo sélectionné</span>
+      </div>
+      <div class="link-form-actions">
+        <button type="button" id="cancelLinkEdit" class="ghost-action">Nouveau</button>
+        <button type="button" id="saveLink" class="primary-action">Ajouter le lien</button>
+      </div>
+    </div>
+
+    <div class="saved-links-title">Liens enregistrés</div>
+    <div id="savedLinksList" class="saved-links-list"></div>
+  </form>
+</dialog>
+
+<dialog id="topUrgencyDialog" class="urgency-dialog">
+  <form method="dialog" class="urgency-dialog-box">
+    <div class="urgency-dialog-head">
+      <div>
+        <strong>Choisir le Top 5 urgences</strong>
+        <small>Sélectionne jusqu'à 5 urgences à épingler sur le tableau de bord.</small>
+      </div>
+      <button value="cancel" class="dialog-close" aria-label="Fermer">×</button>
+    </div>
+    <div id="topUrgencyChoices" class="urgency-choice-list"></div>
+    <div class="urgency-dialog-actions">
+      <span id="topUrgencyCount">0 / 5 sélectionnées</span>
+      <button type="button" id="resetTopUrgencies" class="ghost-action">Automatique</button>
+      <button type="button" id="saveTopUrgencies" class="primary-action">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
 
 <iframe id="pilotageSource" src="/service-Technique-2/" title="Source Pilotage Service Technique"></iframe>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

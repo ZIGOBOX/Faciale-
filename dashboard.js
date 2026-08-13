@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.9.0';
-const DASHBOARD_BUILD='2026-08-13 21:21';
+const DASHBOARD_VERSION='V1.9.3';
+const DASHBOARD_BUILD='2026-08-13 21:48';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -375,9 +375,66 @@ function renderPlanning(data){
   $('planningCount').textContent=p.length;
   $('todayPlanning').innerHTML=p.length?p.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="empty">Aucun élément au planning aujourd’hui</div>';
 }
+
+const TOP_URGENCY_KEY='pst_dashboard_top5_urgencies_v1';
+
+function savedTopUrgencyIds(){
+  try{
+    const x=JSON.parse(localStorage.getItem(TOP_URGENCY_KEY)||'[]');
+    return Array.isArray(x)?x.map(String).slice(0,5):[];
+  }catch{return []}
+}
+function urgencyStableId(x){
+  return `${x.label||''}|${x.id||''}|${x.title||''}`;
+}
+function saveTopUrgencyIds(ids){
+  localStorage.setItem(TOP_URGENCY_KEY,JSON.stringify((ids||[]).map(String).slice(0,5)));
+}
+function chosenUrgencies(all){
+  const ids=savedTopUrgencyIds();
+  if(!ids.length)return all.slice(0,5);
+  const map=new Map(all.map(x=>[urgencyStableId(x),x]));
+  const chosen=ids.map(id=>map.get(id)).filter(Boolean);
+  // si une urgence choisie a disparu, on complète automatiquement
+  if(chosen.length<5){
+    for(const x of all){
+      if(chosen.length>=5)break;
+      if(!chosen.some(y=>urgencyStableId(y)===urgencyStableId(x)))chosen.push(x);
+    }
+  }
+  return chosen.slice(0,5);
+}
+function openTopUrgencyChooser(data){
+  const dialog=$('topUrgencyDialog'),box=$('topUrgencyChoices');
+  if(!dialog||!box)return;
+  const all=collectUrgentDashboardActions(data).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  const selected=new Set(savedTopUrgencyIds());
+  box.innerHTML=all.length?all.map(x=>{
+    const id=urgencyStableId(x);
+    return `<label class="urgency-choice">
+      <input type="checkbox" value="${esc(id)}" ${selected.has(id)?'checked':''}>
+      <span><b>${esc(x.title)}</b><small>${esc(x.label)}${x.priority?' • '+esc(x.priority):''}</small></span>
+      <span class="due">${x.due?esc(x.due):''}</span>
+    </label>`;
+  }).join(''):'<div class="empty">Aucune urgence disponible.</div>';
+
+  const updateCount=()=>{
+    const checked=[...box.querySelectorAll('input:checked')];
+    if(checked.length>5){
+      checked.at(-1).checked=false;
+    }
+    const count=box.querySelectorAll('input:checked').length;
+    if($('topUrgencyCount'))$('topUrgencyCount').textContent=`${count} / 5 sélectionnées`;
+  };
+  box.querySelectorAll('input').forEach(i=>i.addEventListener('change',updateCount));
+  updateCount();
+  dialog.showModal();
+}
+
 function renderUrgencies(data){
   const urgent=collectUrgentDashboardActions(data).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
-  $('urgentList').innerHTML=urgent.length?urgent.slice(0,5).map(x=>row(x.icon,x.title,`${x.label}${x.due?' • échéance '+x.due:''}`,'Urgente','bad')).join(''):'<div class="empty">Aucune urgence dans le logiciel</div>';
+  const top5=chosenUrgencies(urgent);
+  $('urgentList').innerHTML=top5.length?top5.map(x=>row(x.icon,x.title,`${x.label}${x.due?' • échéance '+x.due:''}`,'Urgente','bad')).join(''):'<div class="empty">Aucune urgence dans le logiciel</div>';
   const counts=new Map();
   urgent.forEach(x=>counts.set(x.label,(counts.get(x.label)||0)+1));
   const entries=[...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
@@ -471,3 +528,139 @@ if(pilotageFrame){
     setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},3500);
   });
 }
+
+if($('chooseTopUrgencies'))$('chooseTopUrgencies').onclick=()=>{
+  const data=db();
+  if(data)openTopUrgencyChooser(data);
+};
+if($('saveTopUrgencies'))$('saveTopUrgencies').onclick=()=>{
+  const box=$('topUrgencyChoices');
+  const ids=box?[...box.querySelectorAll('input:checked')].map(i=>i.value).slice(0,5):[];
+  saveTopUrgencyIds(ids);
+  $('topUrgencyDialog')?.close();
+  const data=db();
+  if(data)renderUrgencies(data);
+};
+if($('resetTopUrgencies'))$('resetTopUrgencies').onclick=()=>{
+  saveTopUrgencyIds([]);
+  $('topUrgencyDialog')?.close();
+  const data=db();
+  if(data)renderUrgencies(data);
+};
+
+
+/* ---------- LIENS PERSONNALISÉS ---------- */
+const CUSTOM_LINKS_KEY='pst_dashboard_custom_links_v1';
+let pendingLogoData='';
+
+function loadCustomLinks(){
+  try{
+    const x=JSON.parse(localStorage.getItem(CUSTOM_LINKS_KEY)||'[]');
+    return Array.isArray(x)?x:[];
+  }catch{return []}
+}
+function saveCustomLinks(rows){
+  localStorage.setItem(CUSTOM_LINKS_KEY,JSON.stringify(rows||[]));
+}
+function linkInitials(name){
+  return String(name||'Lien').split(/\s+/).filter(Boolean).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'L';
+}
+function normalizeLinkUrl(url){
+  const u=String(url||'').trim();
+  if(!u)return '';
+  return /^https?:\/\//i.test(u)?u:`https://${u}`;
+}
+function renderCustomLinks(){
+  const rows=loadCustomLinks(),box=$('customLinksGrid');
+  if(!box)return;
+  box.innerHTML=rows.length?rows.map(x=>`
+    <a class="custom-link-card" href="${esc(x.url)}" target="_blank" rel="noopener">
+      ${x.logo?`<img src="${x.logo}" alt="">`:`<div class="fallback-logo">${esc(linkInitials(x.name))}</div>`}
+      <span>${esc(x.name)}</span>
+    </a>`).join(''):'<div class="empty">Aucun raccourci personnalisé. Clique sur « Gérer les liens ».</div>';
+}
+function renderSavedLinks(){
+  const rows=loadCustomLinks(),box=$('savedLinksList');
+  if(!box)return;
+  box.innerHTML=rows.length?rows.map((x,i)=>`
+    <div class="saved-link-row">
+      ${x.logo?`<img src="${x.logo}" alt="">`:`<div class="fallback-logo">${esc(linkInitials(x.name))}</div>`}
+      <div><b>${esc(x.name)}</b><small>${esc(x.url)}</small></div>
+      <div class="saved-link-actions">
+        <button type="button" class="move-link" data-link-up="${esc(x.id)}" ${i===0?'disabled':''}>↑</button>
+        <button type="button" class="move-link" data-link-down="${esc(x.id)}" ${i===rows.length-1?'disabled':''}>↓</button>
+        <button type="button" class="edit-link" data-link-edit="${esc(x.id)}">Modifier</button>
+        <button type="button" class="delete-link" data-link-delete="${esc(x.id)}">Supprimer</button>
+      </div>
+    </div>`).join(''):'<div class="empty">Aucun lien enregistré.</div>';
+}
+function clearLinkForm(){
+  if($('editLinkId'))$('editLinkId').value='';
+  if($('linkName'))$('linkName').value='';
+  if($('linkUrl'))$('linkUrl').value='';
+  if($('linkLogo'))$('linkLogo').value='';
+  pendingLogoData='';
+  if($('linkLogoPreview')){$('linkLogoPreview').src='';$('linkLogoPreview').style.display='none'}
+  if($('linkLogoText'))$('linkLogoText').textContent='Aucun logo sélectionné';
+  if($('saveLink'))$('saveLink').textContent='Ajouter le lien';
+}
+function editCustomLink(id){
+  const x=loadCustomLinks().find(r=>String(r.id)===String(id));if(!x)return;
+  $('editLinkId').value=x.id;$('linkName').value=x.name||'';$('linkUrl').value=x.url||'';
+  pendingLogoData=x.logo||'';
+  if(x.logo){$('linkLogoPreview').src=x.logo;$('linkLogoPreview').style.display='block';$('linkLogoText').textContent='Logo actuel'}
+  else{$('linkLogoPreview').style.display='none';$('linkLogoText').textContent='Aucun logo'}
+  $('saveLink').textContent='Enregistrer les modifications';
+}
+function moveCustomLink(id,delta){
+  const rows=loadCustomLinks(),i=rows.findIndex(x=>String(x.id)===String(id));if(i<0)return;
+  const j=i+delta;if(j<0||j>=rows.length)return;
+  [rows[i],rows[j]]=[rows[j],rows[i]];saveCustomLinks(rows);renderSavedLinks();renderCustomLinks();
+}
+function openLinksManager(){
+  renderSavedLinks();clearLinkForm();$('linksDialog')?.showModal();
+}
+
+if($('manageLinks'))$('manageLinks').onclick=openLinksManager;
+
+if($('linkLogo'))$('linkLogo').addEventListener('change',e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    pendingLogoData=String(reader.result||'');
+    $('linkLogoPreview').src=pendingLogoData;$('linkLogoPreview').style.display='block';
+    $('linkLogoText').textContent=file.name;
+  };
+  reader.readAsDataURL(file);
+});
+
+if($('saveLink'))$('saveLink').onclick=()=>{
+  const name=String($('linkName')?.value||'').trim();
+  const url=normalizeLinkUrl($('linkUrl')?.value);
+  if(!name)return alert('Entre un nom pour le lien.');
+  if(!url)return alert('Entre une adresse internet.');
+  const rows=loadCustomLinks(),id=$('editLinkId')?.value;
+  if(id){
+    const x=rows.find(r=>String(r.id)===String(id));
+    if(x)Object.assign(x,{name,url,logo:pendingLogoData||x.logo||''});
+  }else{
+    rows.push({id:`lnk-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,name,url,logo:pendingLogoData||''});
+  }
+  saveCustomLinks(rows);renderSavedLinks();renderCustomLinks();clearLinkForm();
+};
+
+if($('cancelLinkEdit'))$('cancelLinkEdit').onclick=clearLinkForm;
+
+document.addEventListener('click',e=>{
+  const edit=e.target.closest('[data-link-edit]');if(edit){editCustomLink(edit.dataset.linkEdit);return}
+  const del=e.target.closest('[data-link-delete]');if(del){
+    if(confirm('Supprimer ce lien ?')){
+      saveCustomLinks(loadCustomLinks().filter(x=>String(x.id)!==String(del.dataset.linkDelete)));
+      renderSavedLinks();renderCustomLinks();clearLinkForm();
+    }
+    return
+  }
+  const up=e.target.closest('[data-link-up]');if(up){moveCustomLink(up.dataset.linkUp,-1);return}
+  const down=e.target.closest('[data-link-down]');if(down){moveCustomLink(down.dataset.linkDown,1);return}
+});
+renderCustomLinks();
