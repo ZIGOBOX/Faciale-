@@ -144,6 +144,39 @@ function dashboardMetrics(data,date=todayISO()){
   return {activeAgents,present,urgentActions,lateActions,openMaint,todoMaint,comp,weak,pLate,pSoon,notes,notesDue};
 }
 
+
+function timeToMinutes(v){
+  const m=String(v||'').match(/^(\d{1,2}):(\d{2})$/);
+  return m?Number(m[1])*60+Number(m[2]):null;
+}
+function currentMinutes(){const d=new Date();return d.getHours()*60+d.getMinutes()}
+function liveAgentState(data,agent,date=todayISO(),nowMin=currentMinutes()){
+  const info=dayInfo(data,agent.id,date);
+  const dayType=String(info.dayType||'Présence');
+  if(isAbsenceType(dayType)){
+    if(norm(dayType)==='formation')return {kind:'training',label:'Formation'};
+    return {kind:'absence',label:dayType};
+  }
+  if(norm(dayType)==='repos')return {kind:'finished',label:'Repos'};
+  const start=timeToMinutes(info.plannedStart),end=timeToMinutes(info.plannedEnd);
+  if(start===null||end===null)return {kind:'waiting',label:'Absent — horaire non défini'};
+  if(nowMin<start)return {kind:'waiting',label:`Absent — prend à ${info.plannedStart}`};
+  if(nowMin>=end)return {kind:'finished',label:'Absent — service terminé'};
+  return {kind:'present',label:'Présent'};
+}
+function renderAgentNow(data){
+  const active=(data.agents||[]).filter(a=>norm(a.status)==='actif');
+  const states=active.map(a=>({a,s:liveAgentState(data,a)}));
+  const present=states.filter(x=>x.s.kind==='present').length;
+  const absent=states.length-present;
+  if($('agentNowSummary'))$('agentNowSummary').textContent=`${present} présent${present>1?'s':''} • ${absent} absent${absent>1?'s':''}`;
+  if($('agentNowList'))$('agentNowList').innerHTML=states.length?states.map(({a,s})=>`
+    <div class="agent-now-card ${s.kind}">
+      <span class="status-light"></span>
+      <div><b>${esc(agentName(a))}</b><small>${esc(s.label)}</small></div>
+    </div>`).join(''):'<div class="empty">Aucun agent actif</div>';
+}
+
 /* ---------- AFFICHAGE ---------- */
 
 function row(icon,title,sub='',tag='',kind=''){
@@ -162,35 +195,27 @@ function renderKpis(data){
   $('urgent').textContent=m.urgentActions.length;$('late').textContent=`${m.lateActions.length} en retard`;
   $('maint').textContent=m.openMaint.length;$('maintTodo').textContent=`${m.todoMaint.length} à faire`;
   $('clean').textContent=m.comp==null?'—':`${m.comp} %`;$('cleanWeak').textContent=`${m.weak} point${m.weak>1?'s':''} faible${m.weak>1?'s':''}`;
-  const pct=m.activeAgents.length?Math.round(m.present/m.activeAgents.length*100):0;
-  $('presencePct').textContent=pct+'%';$('present').textContent=`${m.present} présents aujourd’hui`;
+  const liveStates=m.activeAgents.map(a=>liveAgentState(data,a));
+  const livePresent=liveStates.filter(s=>s.kind==='present').length;
+  const pct=m.activeAgents.length?Math.round(livePresent/m.activeAgents.length*100):0;
+  $('presencePct').textContent=pct+'%';$('present').textContent=`${livePresent} présents maintenant`;
   $('presenceRing').style.background=`conic-gradient(#22a55b 0 ${pct}%,#edf2f6 ${pct}% 100%)`;
 }
 function planningForDay(data,date=todayISO()){
   const rows=[];
-  // 1. Equipe : même source que le rapport quotidien
-  for(const a of (data.agents||[]).filter(a=>norm(a.status)==='actif')){
-    const i=dayInfo(data,a.id,date);
-    if(norm(i.dayType)==='repos')continue;
-    rows.push({time:i.plannedStart||'',icon:'👤',title:agentName(a),sub:`${i.dayType||'Présence'} • ${i.shift||''} • ${i.plannedStart||'—'}–${i.plannedEnd||'—'}`,tag:i.dayType||'Présence',kind:isAbsenceType(i.dayType)?'bad':'good',order:1});
-  }
-  // 2. Agenda : meetings + personalEvents, exactement comme le rapport quotidien
   for(const x of [...(data.meetings||[]).filter(x=>normalizeDateValue(x.date)===date),...(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===date)]){
     if(isClosedStatus(x.status)||norm(x.status)==='annule')continue;
-    rows.push({time:x.time||x.start||'',icon:'📅',title:x.title||'Rendez-vous',sub:[x.location,x.status].filter(Boolean).join(' • '),tag:'Agenda',kind:'warn',order:2});
+    rows.push({time:x.time||x.start||'',icon:'📅',title:x.title||'Rendez-vous',sub:[x.location,x.type,x.status].filter(Boolean).join(' • '),tag:x.type||'Agenda',kind:isUrgentPriority(x.priority)?'bad':'warn',order:1});
   }
-  // 3. Interventions : date du jour OU échéance du jour, exactement comme le rapport quotidien
   for(const x of (data.maintenance||[]).filter(x=>normalizeDateValue(x.date)===date||recordDueDate(x)===date)){
     if(isClosedStatus(x.status))continue;
-    rows.push({time:x.time||'',icon:'🔧',title:x.title||x.no||'Intervention',sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),tag:'Intervention',kind:isUrgentPriority(x.priority)?'bad':'warn',order:3});
+    rows.push({time:x.time||'',icon:'🔧',title:x.title||x.no||'Intervention',sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),tag:'Intervention',kind:isUrgentPriority(x.priority)?'bad':'warn',order:2});
   }
   return rows.sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99')||a.order-b.order);
 }
 function renderPlanning(data){
   const p=planningForDay(data);
-  // KPI = agenda + interventions du jour, pas les agents, pour garder un compteur "actions"
-  const actionCount=p.filter(x=>x.order>1).length;
-  $('planningCount').textContent=actionCount;
+  $('planningCount').textContent=p.length;
   $('todayPlanning').innerHTML=p.length?p.slice(0,12).map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="empty">Aucun élément au planning aujourd’hui</div>';
 }
 function renderUrgencies(data){
@@ -221,7 +246,7 @@ function renderCharts(data){
   const maint=days.map(d=>(data.maintenance||[]).filter(x=>normalizeDateValue(x.date)<=d&&!isClosedStatus(x.status)).length);
   const periodic=days.map(d=>(data.periodic||[]).filter(x=>norm(periodicComputed(x,d))==='en retard').length);
   const presence=days.map(d=>{const m=dashboardMetrics(data,d);return m.activeAgents.length?Math.round(m.present/m.activeAgents.length*100):0});
-  const planning=days.map(d=>planningForDay(data,d).filter(x=>x.order>1).length);
+  const planning=days.map(d=>planningForDay(data,d).length);
   const clean=days.map(d=>dashboardMetrics(data,d).comp||0);
   drawSpark('sparkUrgent',urg,'#e53935');drawSpark('sparkMaint',maint,'#2f80ed');drawSpark('sparkPeriodic',periodic,'#e53935');drawSpark('sparkPlanning',planning,'#f59e0b');drawSpark('sparkClean',clean,'#22a55b');
 
@@ -233,7 +258,7 @@ function renderCharts(data){
   days.forEach((d,i)=>{ctx.fillStyle='#69788a';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(parseDate(d).toLocaleDateString('fr-FR',{weekday:'short'}).replace('.',''),pad.l+cw*i/6,h-7)});
 }
 function renderAll(data){
-  renderKpis(data);renderPlanning(data);renderUrgencies(data);renderPeriodic(data);renderDomains(data);renderCharts(data);
+  renderKpis(data);renderAgentNow(data);renderPlanning(data);renderUrgencies(data);renderPeriodic(data);renderDomains(data);renderCharts(data);
   const d=new Date();$('todayTitle').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('lastUpdate').textContent='Mise à jour : '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
@@ -261,3 +286,5 @@ window.addEventListener('online',sync);
 window.addEventListener('resize',()=>{const data=db();if(data)renderCharts(data)});
 setInterval(sync,5000);
 sync();
+
+setInterval(()=>{const data=db();if(data){renderKpis(data);renderAgentNow(data)}},60000);
