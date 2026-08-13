@@ -1,34 +1,29 @@
-# Suivi des agents — Version connectée
+# Suivi des agents — Connexion réelle à Pilotage Service Technique
 
-Cette version est prévue pour fonctionner avec :
+Cette version ne dépend plus d'un faux canal de messages.
+
+Elle analyse directement les données JSON stockées dans `localStorage` par :
 https://zigobox.github.io/service-Technique-2/
 
-Elle lit automatiquement les données partagées par le site Pilotage via :
-- `BroadcastChannel`
-- `localStorage`
-- `zigobox_pilotage_event`
-- `zigobox_pilotage_log`
-- `zigobox_pilotage_inbox`
+Comme le nouveau dashboard sera lui aussi sous `https://zigobox.github.io/...`, le navigateur autorise l'accès au même stockage d'origine.
 
-## URL conseillée
-Crée un dépôt GitHub :
+## Dépôt conseillé
 `suivi-agents`
 
 URL :
 https://zigobox.github.io/suivi-agents/
 
+## Fonctionnement
+Le dashboard recherche automatiquement dans la base locale les jeux de données correspondant à :
+- agents ;
+- interventions ;
+- absences / congés / RTT ;
+- rendez-vous ;
+- contrôles périodiques ;
+- notes ;
+- sécurité / problématiques.
+
+Le fichier affiche aussi une rubrique « Dernières données détectées » pour vérifier à quelles structures de la base il s'est connecté.
+
 ## Important
-Les deux sites doivent rester sous le même domaine :
-`https://zigobox.github.io/...`
-
-La connexion est alors automatique dans le même navigateur.
-
-## Ce qui remonte automatiquement
-- dernier événement ;
-- alertes ;
-- demandes d'intervention ;
-- incidents résolus ;
-- messages INFO ;
-- compteurs du tableau de bord.
-
-La présence des agents est mémorisée localement dans le tableau de bord.
+Ouvre d'abord Pilotage Service Technique sur le même navigateur et connecte-toi normalement, puis ouvre Suivi des agents.

@@ -1,132 +1,25 @@
-<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1f36">
-<title>Suivi des agents - Pilotage Service Technique</title>
-<link rel="stylesheet" href="style.css">
-</head>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1f36"><title>Suivi des agents</title><link rel="stylesheet" href="style.css"></head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <div class="menu">☰</div>
-    <div>
-      <h1>SUIVI DES AGENTS</h1>
-      <p>Pilotage Service Technique</p>
-    </div>
-  </div>
-  <div class="top-info">
-    <span id="today"></span>
-    <span id="clock"></span>
-    <span id="connectionBadge" class="connection-badge">Connexion…</span><a href="https://zigobox.github.io/service-Technique-2/" target="_blank" rel="noopener">Ouvrir Pilotage Service Technique ↗</a>
-  </div>
-</header>
+<header><div><h1>SUIVI DES AGENTS</h1><p>Pilotage Service Technique</p></div><div class="right"><span id="sync" class="sync">Analyse des données…</span><span id="clock"></span><a href="https://zigobox.github.io/service-Technique-2/" target="_blank">Ouvrir le Pilotage ↗</a></div></header>
+<main>
+<section class="kpis">
+<div class="kpi"><b>Agents actifs</b><strong id="agentsCount">0</strong><small id="presentText">0 présents aujourd'hui</small></div>
+<div class="kpi"><b>Actions urgentes</b><strong id="urgentCount">0</strong><small id="lateText">0 en retard</small></div>
+<div class="kpi"><b>Interventions ouvertes</b><strong id="openCount">0</strong><small id="todoText">0 à faire</small></div>
+<div class="kpi"><b>Contrôles périodiques</b><strong id="controlCount">0</strong><small id="controlSoon">0 bientôt</small></div>
+<div class="kpi"><b>Notes actives</b><strong id="notesCount">0</strong><small id="notesSoon">0 échéance proche</small></div>
+<div class="kpi"><b>Présence aujourd'hui</b><strong id="presenceRate">—</strong><small>Équipe disponible</small></div>
+</section>
 
-<main class="dashboard">
-  <section class="kpis">
-    <article class="kpi orange"><span class="ico">📋</span><div><b>À TRAITER</b><strong id="kTodo">18</strong><small>Demandes en attente</small></div></article>
-    <article class="kpi blue"><span class="ico">🔧</span><div><b>EN COURS</b><strong id="kProgress">7</strong><small>Interventions en cours</small></div></article>
-    <article class="kpi red"><span class="ico">🚨</span><div><b>URGENTES</b><strong id="kUrgent">4</strong><small>Demandes urgentes</small></div></article>
-    <article class="kpi green"><span class="ico">✓</span><div><b>TERMINÉES</b><strong id="kDone">32</strong><small>Interventions terminées</small></div></article>
-    <article class="kpi purple"><span class="ico">📊</span><div><b>TOTAL</b><strong id="kTotal">61</strong><small>Demandes au total</small></div></article>
-    <article class="kpi amber"><span class="ico">⏱</span><div><b>EN RETARD</b><strong id="kLate">2</strong><small>Interventions en retard</small></div></article>
-  </section>
-
-  <section class="live-strip"><div><b>DERNIER ÉVÉNEMENT DU PILOTAGE</b><span id="liveEvent">Connexion au Pilotage…</span></div></section>
-  <section class="layout">
-    <article class="panel status-panel">
-      <div class="panel-title redline">PRÉSENCE DES AGENTS</div>
-      <div id="agents" class="agents"></div>
-      <button id="addAgent" class="smallbtn">+ Ajouter un agent</button>
-    </article>
-
-    <article class="panel">
-      <div class="panel-title blueline">AUJOURD'HUI</div>
-      <div class="today-grid">
-        <div><strong>5</strong><span>Interventions prévues</span></div>
-        <div><strong>2</strong><span>Retards à traiter</span></div>
-        <div><strong>1</strong><span>Urgence immédiate</span></div>
-      </div>
-      <div class="sub-title">Planning rapide</div>
-      <div class="schedule">
-        <div><b>09:00</b><span>Réunion d'équipe</span></div>
-        <div><b>10:00</b><span>Point sécurité</span></div>
-        <div><b>14:00</b><span>Maintenance préventive</span></div>
-      </div>
-    </article>
-
-    <article class="panel">
-      <div class="panel-title greenline">RÉPARTITION PAR STATUT</div>
-      <div class="donut-wrap">
-        <div class="donut"></div>
-        <div class="legend">
-          <div><i class="c1"></i>À traiter <b>18</b></div>
-          <div><i class="c2"></i>En cours <b>7</b></div>
-          <div><i class="c3"></i>Urgentes <b>4</b></div>
-          <div><i class="c4"></i>Terminées <b>32</b></div>
-        </div>
-      </div>
-    </article>
-
-    <article class="panel wide">
-      <div class="panel-title blueline">ACTIVITÉ - 7 DERNIERS JOURS</div>
-      <div class="bars">
-        <div><span style="height:55%"></span><b>Lun</b><em>8</em></div>
-        <div><span style="height:40%"></span><b>Mar</b><em>6</em></div>
-        <div><span style="height:65%"></span><b>Mer</b><em>9</em></div>
-        <div><span style="height:50%"></span><b>Jeu</b><em>7</em></div>
-        <div><span style="height:60%"></span><b>Ven</b><em>8</em></div>
-        <div><span style="height:25%"></span><b>Sam</b><em>3</em></div>
-        <div><span style="height:12%"></span><b>Dim</b><em>1</em></div>
-      </div>
-    </article>
-
-    <article class="panel">
-      <div class="panel-title redline">ALERTES ACTIVES</div>
-      <div id="alerts" class="alerts">
-        <div><span>⚠️</span><p><b>Fuite d'eau - Bâtiment A</b><small>Signalée il y a 15 min</small></p><em>URGENT</em></div>
-        <div><span>⚠️</span><p><b>Panne d'ascenseur - Bâtiment B</b><small>Signalée il y a 45 min</small></p><em>URGENT</em></div>
-      </div>
-    </article>
-
-    <article class="panel">
-      <div class="panel-title violetline">SUIVI DES ACTIONS</div>
-      <table>
-        <thead><tr><th>Action</th><th>Responsable</th><th>Statut</th></tr></thead>
-        <tbody>
-          <tr><td>Vérification harnais</td><td>J. Martin</td><td><span class="tag orange-tag">En cours</span></td></tr>
-          <tr><td>Formation gestes sécurité</td><td>S. Bernard</td><td><span class="tag blue-tag">Planifiée</span></td></tr>
-          <tr><td>Contrôle engins</td><td>T. Petit</td><td><span class="tag green-tag">Terminé</span></td></tr>
-          <tr><td>Audit EPI</td><td>D. Leroy</td><td><span class="tag red-tag">À faire</span></td></tr>
-        </tbody>
-      </table>
-    </article>
-
-    <article class="panel">
-      <div class="panel-title tealine">INDICATEURS CLÉS</div>
-      <div class="indicators">
-        <div><strong>89%</strong><span>Taux de résolution</span></div>
-        <div><strong>2h15</strong><span>Temps moyen</span></div>
-        <div><strong>4,6/5</strong><span>Satisfaction</span></div>
-        <div><strong id="presentCount">0</strong><span>Agents présents</span></div>
-      </div>
-    </article>
-  </section>
+<section class="grid">
+<article class="panel wide"><h2>Présence des agents</h2><div id="agentsList" class="agents"></div></article>
+<article class="panel"><h2>Résumé aujourd'hui</h2><div id="todaySummary" class="summary"></div></article>
+<article class="panel"><h2>Actions urgentes</h2><div id="urgentList" class="list"></div></article>
+<article class="panel"><h2>Interventions en cours</h2><div id="interventionList" class="list"></div></article>
+<article class="panel"><h2>Absences / RTT / congés</h2><div id="absenceList" class="list"></div></article>
+<article class="panel"><h2>Prochains rendez-vous</h2><div id="rdvList" class="list"></div></article>
+<article class="panel"><h2>Contrôles périodiques</h2><div id="controlList" class="list"></div></article>
+<article class="panel"><h2>Dernières données détectées</h2><div id="sources" class="sources"></div></article>
+</section>
 </main>
-
-<div id="agentModal" class="modal hidden">
-  <div class="modal-card">
-    <h2>Ajouter un agent</h2>
-    <input id="newName" placeholder="Nom de l'agent">
-    <input id="newZone" placeholder="Poste / zone">
-    <div class="modal-actions">
-      <button id="cancelAgent" class="secondary">Annuler</button>
-      <button id="saveAgent">Ajouter</button>
-    </div>
-  </div>
-</div>
-
-<script src="dashboard.js"></script>
-</body>
-</html>
+<script src="dashboard.js"></script></body></html>
