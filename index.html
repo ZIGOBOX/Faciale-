@@ -1,13 +1,66 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1020"><title>ZiGoBox Facial</title><link rel="stylesheet" href="style.css"></head><body>
-<header><div><h1>ZiGoBox</h1><p>Reconnaissance faciale → roue</p></div><div id="status" class="pill warn">Chargement IA…</div></header>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>ZiGoBox - Liaison Pilotage</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>ZiGoBox</h1>
+    <p>Télécommande • Pilotage Service Technique</p>
+  </div>
+  <span id="connection" class="pill">Connexion locale</span>
+</header>
+
 <main>
-<section class="card"><h2>1. Caméra</h2><div class="camera"><video id="video" autoplay muted playsinline></video><canvas id="overlay"></canvas><div id="faceBadge" class="face-badge">Aucun visage</div></div>
-<div class="buttons"><button id="cameraBtn">Activer la caméra</button><button id="saveBtn" class="secondary" disabled>Enregistrer ce visage</button><button id="deleteBtn" class="danger">Effacer le visage</button></div>
-<div class="stats"><div><b>Détection</b><span id="detected">Non</span></div><div><b>Enregistré</b><span id="saved">Non</span></div><div><b>Reconnu</b><span id="recognized">Non</span></div><div><b>Similarité</b><span id="similarity">—</span></div></div><p id="help" class="help">Active la caméra, puis regarde-la bien de face.</p></section>
-<section class="card center"><h2>2. Roue</h2><div class="wheel-wrap"><div class="pointer">▼</div><canvas id="wheel" width="600" height="600"></canvas></div>
-<div class="buttons center-buttons"><button id="spinBtn">Lancer la roue</button><button id="editBtn" class="secondary">Modifier les lots</button></div><div id="winner" class="winner">En attente…</div></section>
-<section class="card full"><h2>3. Réglages</h2><label>Seuil de reconnaissance : <strong id="thresholdLabel">0.55</strong><input id="threshold" type="range" min="0.40" max="0.80" step="0.01" value="0.55"></label>
-<label>Délai entre deux déclenchements<select id="cooldown"><option value="5000">5 secondes</option><option value="10000" selected>10 secondes</option><option value="20000">20 secondes</option><option value="30000">30 secondes</option></select></label>
-<label class="check"><input id="autoSpin" type="checkbox" checked> Lancer automatiquement la roue si le visage est reconnu</label></section></main>
-<dialog id="dialog"><h3>Lots de la roue</h3><textarea id="prizesInput" rows="10"></textarea><div class="buttons"><button id="cancelEdit" class="secondary">Annuler</button><button id="saveEdit">Enregistrer</button></div></dialog>
-<script src="https://cdn.jsdelivr.net/npm/@vladmandic/human/dist/human.js"></script><script src="app.js"></script></body></html>
+  <section class="card">
+    <h2>Envoyer au Pilotage</h2>
+
+    <label>Nom / poste
+      <input id="sender" value="Télécommande ZiGoBox">
+    </label>
+
+    <label>Message
+      <textarea id="message" rows="4" placeholder="Ex. Besoin d'un technicien sur la borne 2"></textarea>
+    </label>
+
+    <div class="actions">
+      <button data-command="INFO">📩 Envoyer</button>
+      <button data-command="ALERTE" class="alert">🚨 Alerte technique</button>
+      <button data-command="INTERVENTION">🛠️ Demander intervention</button>
+      <button data-command="OK" class="success">✅ Incident résolu</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>État partagé</h2>
+    <div class="grid">
+      <div><b>Dernière commande</b><span id="lastCommand">—</span></div>
+      <div><b>Dernier message</b><span id="lastMessage">—</span></div>
+      <div><b>Envoyé par</b><span id="lastSender">—</span></div>
+      <div><b>Heure</b><span id="lastTime">—</span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Journal</h2>
+    <div id="log" class="log"></div>
+    <button id="clearLog" class="secondary">Effacer le journal local</button>
+  </section>
+
+  <section class="card">
+    <h2>Ouvrir Pilotage Service Technique</h2>
+    <p>Cette page ouvre ton application actuelle dans un nouvel onglet.</p>
+    <a class="open-btn" href="https://zigobox.github.io/service-Technique-2/" target="_blank" rel="noopener">
+      Ouvrir Pilotage Service Technique
+    </a>
+  </section>
+</main>
+
+<script src="bridge.js"></script>
+</body>
+</html>
