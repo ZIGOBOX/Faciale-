@@ -13,7 +13,7 @@ const due=r=>String(r?.dueDate||r?.deadline||r?.echeance||r?.endDate||r?.targetD
 
 function db(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}}
 function item(title,sub='',tag='',kind=''){return `<div class="row"><div class="avatar">${initials(title)}</div><div><b>${esc(title)}</b><small>${esc(sub)}</small></div>${tag?`<span class="tag ${kind}">${esc(tag)}</span>`:''}</div>`}
-function setList(id,rows,msg='Aucune donnée'){ $(id).innerHTML=rows.length?rows.join(''):`<div class="empty">${msg}</div>`}
+function setList(id,rows,msg='Aucune donnée'){ const el=$(id); if(!el)return; el.innerHTML=rows.length?rows.join(''):`<div class="empty">${msg}</div>`}
 
 function copyKpisFromPilotage(){
  try{
