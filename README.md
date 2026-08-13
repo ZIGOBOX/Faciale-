@@ -1,11 +1,13 @@
-# Dashboard — agenda immédiat
+# Dashboard — Agenda fusion exacte
 
-Correction du planning du jour :
+Correction spécifique de l'Agenda personnel :
 
-- `personalEvents` (Agenda personnel) est bien lu.
-- La base locale `pilotage-service-technique-v25` est prioritaire sur le même navigateur.
-- Un événement ajouté dans Pilotage est donc visible immédiatement dans le dashboard, sans attendre Supabase.
-- Supabase est toujours interrogé toutes les 5 secondes pour la synchronisation distante.
-- L'iframe Pilotage permet au cloud de remettre à jour la base locale si nécessaire.
-- Le planning d'aujourd'hui n'est plus limité à 12 lignes : tous les événements du jour sont affichés.
-- Planning du jour = meetings + personalEvents + interventions maintenance datées ou échues aujourd'hui.
+- fusion de `personalEvents` local + Supabase par ID ;
+- un nouvel événement non encore synchronisé au cloud est donc conservé ;
+- un événement déjà dans le cloud est aussi récupéré même si le local est ancien ;
+- le planning affiche TOUS les `meetings` et `personalEvents` dont la date est aujourd'hui ;
+- aucun filtre de statut n'est appliqué à l'agenda, conformément au rapport quotidien de Pilotage ;
+- le pied de page indique le nombre d'événements Agenda personnel détectés aujourd'hui ;
+- actualisation toutes les 5 secondes.
+
+Les interventions du jour restent : maintenance dont date = aujourd'hui ou échéance = aujourd'hui.

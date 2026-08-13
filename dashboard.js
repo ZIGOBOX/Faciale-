@@ -37,7 +37,29 @@ function recordDueDate(record){
 let cloudDb=null,cloudUpdatedAt='',supabaseClient=null,syncBusy=false;
 
 function localDb(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
-function db(){return localDb()||cloudDb}
+
+function mergeRows(cloudRows=[],localRows=[]){
+  const map=new Map();
+  for(const x of (cloudRows||[]))if(x&&x.id!=null)map.set(String(x.id),x);
+  // Les nouveaux éléments locaux absents du cloud sont ajoutés immédiatement.
+  // Pour un même ID, la version locale est privilégiée car Pilotage l'écrit avant l'envoi cloud.
+  for(const x of (localRows||[]))if(x&&x.id!=null)map.set(String(x.id),x);
+  return [...map.values()];
+}
+function mergePilotageData(local,cloud){
+  if(!local)return cloud;
+  if(!cloud)return local;
+  const out={...cloud,...local};
+  const arrayKeys=[
+    'agents','weeklyPlans','rotations','rotationExceptions','agentDays',
+    'personalEvents','issues','periodic','cleaning','maintenance','requests',
+    'works','meetings','notes','vacations','documents','contacts',
+    'reportNonconformities'
+  ];
+  for(const k of arrayKeys)out[k]=mergeRows(cloud[k]||[],local[k]||[]);
+  return out;
+}
+function db(){return mergePilotageData(localDb(),cloudDb)}
 
 async function ensureCloudClient(){
   if(supabaseClient)return supabaseClient;
@@ -204,7 +226,6 @@ function renderKpis(data){
 function planningForDay(data,date=todayISO()){
   const rows=[];
   for(const x of [...(data.meetings||[]).filter(x=>normalizeDateValue(x.date)===date),...(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===date)]){
-    if(isClosedStatus(x.status)||norm(x.status)==='annule')continue;
     rows.push({time:x.time||x.start||'',icon:'📅',title:x.title||'Rendez-vous',sub:[x.location,x.type,x.status].filter(Boolean).join(' • '),tag:x.type||'Agenda',kind:isUrgentPriority(x.priority)?'bad':'warn',order:1});
   }
   for(const x of (data.maintenance||[]).filter(x=>normalizeDateValue(x.date)===date||recordDueDate(x)===date)){
@@ -268,16 +289,17 @@ async function sync(){
   try{
     setState('Synchronisation…');
     await fetchCloudDb();
-    // Priorité à la base locale : Pilotage l'écrit immédiatement à chaque sauvegarde.
-    // L'iframe Pilotage recharge également la copie cloud dans cette même base locale.
-    const data=localDb()||cloudDb;
+    // Fusion locale + cloud : un nouvel élément existe parfois d'abord en local,
+    // tandis qu'un autre appareil peut avoir déjà envoyé une donnée plus récente au cloud.
+    const data=mergePilotageData(localDb(),cloudDb);
     if(!data)throw new Error('Aucune donnée Pilotage disponible');
     renderAll(data);
+    const todayPersonal=(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===todayISO()).length;
     const ts=cloudUpdatedAt?new Date(cloudUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):new Date().toLocaleTimeString('fr-FR');
-    $('lastSync').textContent=`Base locale immédiate • cloud vérifié à ${ts}`;
+    $('lastSync').textContent=`Local + cloud fusionnés • ${todayPersonal} événement(s) agenda aujourd’hui • cloud ${ts}`;
     setState('Connecté au Pilotage ✓',true);
   }catch(e){
-    console.error(e);const data=localDb();
+    console.error(e);const data=mergePilotageData(localDb(),cloudDb);
     if(data){cloudDb=null;renderAll(data);$('lastSync').textContent=`Mode local • ${e.message||e}`;setState('Mode local • serveur indisponible')}
     else{$('lastSync').textContent=e.message||String(e);setState('Données indisponibles')}
   }finally{syncBusy=false}
@@ -308,7 +330,7 @@ setInterval(()=>{const data=db();if(data){renderKpis(data);renderAgentNow(data)}
 const pilotageFrame=document.getElementById('pilotageSource');
 if(pilotageFrame){
   pilotageFrame.addEventListener('load',()=>{
-    setTimeout(()=>{const data=localDb();if(data)renderAll(data)},1200);
-    setTimeout(()=>{const data=localDb();if(data)renderAll(data)},3500);
+    setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},1200);
+    setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},3500);
   });
 }
