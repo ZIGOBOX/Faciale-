@@ -1,21 +1,21 @@
-# Tableau de bord quotidien — connexion cloud fiable
+# Tableau de bord quotidien — raccordements exacts
 
-Cette version ne dépend plus principalement de l'iframe ou du localStorage.
+Cette version reprend les règles métier du vrai `app.js` de Pilotage Service Technique.
 
-Elle utilise directement la même configuration Supabase que Pilotage Service Technique :
-- configuration : `/service-Technique-2/supabase-config.js`
-- authentification : session Supabase existante
-- table : `app_state`
-- sélection : ligne du `user_id` connecté
-- champ lu : `data`
-- actualisation : toutes les 5 secondes
+Raccordements :
+- Présence agents : agents actifs + `dayInfo()` reconstruit depuis weeklyPlans, rotations, rotationExceptions et agentDays.
+- Actions urgentes : issues + maintenance + requests + works + notes + personalEvents + reportNonconformities non déjà liées.
+- Retards : issues + maintenance + requests + works + notes avec échéance dépassée.
+- Interventions ouvertes : maintenance non clôturée.
+- À faire : statuts À qualifier / À faire / Planifié.
+- Conformité ménage : contrôles des 30 derniers jours, overallStatus conforme et tâches faibles.
+- Contrôles périodiques : `nextDate` ou calcul `lastDate + intervalMonths`, En retard / Bientôt / À jour.
+- Planning d'aujourd'hui : équipe du jour via dayInfo + meetings + personalEvents du jour + maintenance dont date ou échéance = aujourd'hui.
+- Charge par domaine : maintenance ouverte groupée par `family`.
+- Graphiques : calculés uniquement à partir de ces mêmes données réelles, aucune valeur fictive.
 
-Le localStorage `pilotage-service-technique-v25` sert uniquement de secours si le serveur est momentanément inaccessible.
-
-Le tableau de bord indique maintenant clairement :
-- `Connecté au Pilotage ✓`
-- `Synchronisation…`
-- `Mode local • serveur indisponible`
-- `Données indisponibles`
-
-Pour que la connexion cloud fonctionne, l'utilisateur doit être connecté au Pilotage Service Technique dans le même navigateur.
+Source cloud :
+- Supabase `app_state`
+- utilisateur de la session connectée
+- rafraîchissement toutes les 5 secondes
+- localStorage uniquement en secours
