@@ -1,29 +1,17 @@
-# Suivi des agents — collecte automatique réelle
+# Suivi des agents — Version VISUELLE RAPIDE
 
-Cette version a été construite à partir des fichiers source de Pilotage Service Technique V121.
+Cette version conserve exactement la collecte automatique qui fonctionne avec Pilotage Service Technique.
 
-## Source réelle
-La base principale utilise exactement la clé :
-`pilotage-service-technique-v25`
+Seul l'affichage a été retravaillé :
+- lecture en 5 secondes ;
+- rouge = urgent / retard ;
+- orange = à traiter / à surveiller ;
+- vert = OK / présence ;
+- bleu = information / activité ;
+- anneau de répartition des priorités ;
+- courbe des interventions sur 7 jours ;
+- jauge de présence ;
+- barres de charge par domaine ;
+- listes compactes d'urgences, contrôles, maintenance, absences et rendez-vous.
 
-Le dashboard est conçu pour être publié sous le même domaine GitHub Pages :
-- Pilotage : `https://zigobox.github.io/service-Technique-2/`
-- Dashboard conseillé : `https://zigobox.github.io/suivi-agents/`
-
-## Pourquoi cette version est plus fiable
-Le dashboard charge Pilotage Service Technique dans une iframe invisible, autorisée car les deux pages sont sur `zigobox.github.io`.
-Il récupère directement les KPI déjà calculés par l'application d'origine :
-- Agents actifs / présents
-- Actions urgentes / retards
-- Interventions ouvertes / à faire
-- Conformité ménage / points faibles
-- Contrôles périodiques en retard / bientôt
-- Notes actives / échéances proches
-
-Les listes utilisent les vrais tableaux de la base V121 :
-`agents`, `agentDays`, `maintenance`, `issues`, `requests`, `works`, `notes`, `personalEvents`, `meetings`, `periodic`.
-
-Le tableau de bord relit les données toutes les 5 secondes et écoute aussi les changements de localStorage.
-
-## Installation
-Créer un dépôt `suivi-agents`, placer `index.html`, `style.css`, `dashboard.js` à la racine et activer GitHub Pages.
+La source reste `pilotage-service-technique-v25` et le mécanisme de collecte via la page Pilotage n'a pas été modifié.

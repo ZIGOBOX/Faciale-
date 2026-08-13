@@ -1,23 +1,147 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#075ca8"><title>Suivi des agents</title><link rel="stylesheet" href="style.css"></head><body>
-<header><div><h1>SUIVI DES AGENTS</h1><p>Collecte automatique • Pilotage Service Technique</p></div><div class="headright"><span id="state">Connexion…</span><span id="clock"></span><a href="/service-Technique-2/" target="_blank">Ouvrir Pilotage ↗</a></div></header>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10273f">
+<title>Suivi des agents</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="signal-mark">ST</div>
+    <div>
+      <h1>SUIVI DES AGENTS</h1>
+      <p>Pilotage Service Technique • Supervision en temps réel</p>
+    </div>
+  </div>
+  <div class="headright">
+    <span id="state">Connexion…</span>
+    <span id="clock"></span>
+    <a href="/service-Technique-2/" target="_blank">Ouvrir Pilotage ↗</a>
+  </div>
+</header>
+
 <main>
-<section class="kpis">
-<article class="blue"><span>Agents actifs</span><strong id="agents">—</strong><small id="present">Collecte…</small></article>
-<article class="red"><span>Actions urgentes</span><strong id="urgent">—</strong><small id="late">Collecte…</small></article>
-<article class="orange"><span>Interventions ouvertes</span><strong id="maint">—</strong><small id="maintTodo">Collecte…</small></article>
-<article class="green"><span>Conformité ménage</span><strong id="clean">—</strong><small id="cleanWeak">Collecte…</small></article>
-<article class="purple"><span>Contrôles périodiques</span><strong id="periodic">—</strong><small id="periodicSoon">Collecte…</small></article>
-<article class="cyan"><span>Notes actives</span><strong id="notes">—</strong><small id="notesDue">Collecte…</small></article>
-</section>
-<section class="grid">
-<article class="panel span2"><h2>Présence des agents aujourd'hui</h2><div id="agentList"></div></article>
-<article class="panel"><h2>Interventions ouvertes</h2><div id="maintenanceList"></div></article>
-<article class="panel"><h2>Actions urgentes</h2><div id="urgentList"></div></article>
-<article class="panel"><h2>Absences / RTT / congés aujourd'hui</h2><div id="absenceList"></div></article>
-<article class="panel"><h2>Prochains rendez-vous</h2><div id="meetingList"></div></article>
-<article class="panel"><h2>Contrôles périodiques</h2><div id="periodicList"></div></article>
-<article class="panel"><h2>Synchronisation</h2><div class="syncbox"><b>Source</b><code>pilotage-service-technique-v25</code><p id="lastSync">En attente…</p><button id="refresh">Actualiser maintenant</button></div></article>
-</section>
+  <section class="headline-strip" aria-label="Résumé prioritaire">
+    <article class="signal-card danger">
+      <span class="signal-dot"></span>
+      <div><small>URGENT</small><strong id="urgent">—</strong><em id="late">Collecte…</em></div>
+    </article>
+    <article class="signal-card warning">
+      <span class="signal-dot"></span>
+      <div><small>À TRAITER</small><strong id="maint">—</strong><em id="maintTodo">Collecte…</em></div>
+    </article>
+    <article class="signal-card success">
+      <span class="signal-dot"></span>
+      <div><small>PRÉSENCE</small><strong id="agents">—</strong><em id="present">Collecte…</em></div>
+    </article>
+    <article class="signal-card success">
+      <span class="signal-dot"></span>
+      <div><small>MÉNAGE</small><strong id="clean">—</strong><em id="cleanWeak">Collecte…</em></div>
+    </article>
+    <article class="signal-card info">
+      <span class="signal-dot"></span>
+      <div><small>CONTRÔLES</small><strong id="periodic">—</strong><em id="periodicSoon">Collecte…</em></div>
+    </article>
+    <article class="signal-card neutral">
+      <span class="signal-dot"></span>
+      <div><small>NOTES</small><strong id="notes">—</strong><em id="notesDue">Collecte…</em></div>
+    </article>
+  </section>
+
+  <section class="visual-grid">
+    <article class="panel priority-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">PRIORITÉS</span><h2>État du service</h2></div>
+        <span class="live-pill">● LIVE</span>
+      </div>
+      <div class="priority-body">
+        <div class="donut-wrap">
+          <div id="priorityDonut" class="donut"><div><strong id="priorityTotal">0</strong><span>actions</span></div></div>
+        </div>
+        <div id="priorityLegend" class="priority-legend"></div>
+      </div>
+    </article>
+
+    <article class="panel activity-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">ACTIVITÉ</span><h2>Interventions sur 7 jours</h2></div>
+        <span id="weekTotal" class="big-chip">0</span>
+      </div>
+      <div class="chart-area">
+        <canvas id="activityChart" width="720" height="250"></canvas>
+      </div>
+      <div id="activityLabels" class="chart-labels"></div>
+    </article>
+
+    <article class="panel presence-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">ÉQUIPE</span><h2>Présence aujourd'hui</h2></div>
+        <span id="presenceGaugeText" class="big-chip greenchip">—</span>
+      </div>
+      <div class="gauge-track"><span id="presenceGauge"></span></div>
+      <div id="agentList" class="agent-tiles"></div>
+    </article>
+
+    <article class="panel load-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">CHARGE</span><h2>Interventions par domaine</h2></div>
+      </div>
+      <div id="domainBars" class="domain-bars"></div>
+    </article>
+
+    <article class="panel urgent-panel">
+      <div class="panel-head red-head">
+        <div><span class="eyebrow">ATTENTION</span><h2>Urgences & retards</h2></div>
+        <span class="alert-icon">!</span>
+      </div>
+      <div id="urgentList" class="fast-list"></div>
+    </article>
+
+    <article class="panel deadline-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">ÉCHÉANCES</span><h2>Contrôles périodiques</h2></div>
+      </div>
+      <div id="periodicList" class="fast-list"></div>
+    </article>
+
+    <article class="panel maintenance-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">MAINTENANCE</span><h2>Interventions ouvertes</h2></div>
+      </div>
+      <div id="maintenanceList" class="fast-list"></div>
+    </article>
+
+    <article class="panel absence-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">ABSENCES</span><h2>RTT / congés / absences</h2></div>
+      </div>
+      <div id="absenceList" class="fast-list"></div>
+    </article>
+
+    <article class="panel meeting-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">AGENDA</span><h2>Prochains rendez-vous</h2></div>
+      </div>
+      <div id="meetingList" class="fast-list"></div>
+    </article>
+
+    <article class="panel sync-panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">SOURCE</span><h2>Synchronisation</h2></div>
+      </div>
+      <div class="syncbox">
+        <div class="sync-line"><span>Base</span><code>pilotage-service-technique-v25</code></div>
+        <p id="lastSync">En attente…</p>
+        <button id="refresh">Actualiser maintenant</button>
+      </div>
+    </article>
+  </section>
 </main>
+
 <iframe id="pilotageSource" src="/service-Technique-2/" title="Source Pilotage Service Technique"></iframe>
-<script src="dashboard.js"></script></body></html>
+<script src="dashboard.js"></script>
+</body>
+</html>
