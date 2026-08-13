@@ -1,157 +1,89 @@
+'use strict';
+const KEY='pilotage-service-technique-v25';
 const $=id=>document.getElementById(id);
-const norm=s=>String(s??'').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
-const todayISO=()=>new Date().toISOString().slice(0,10);
+const norm=v=>String(v??'').trim().toLocaleLowerCase('fr-FR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const iso=d=>{d=new Date(d);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const today=()=>iso(new Date());
+const closed=v=>['termine','terminee','cloture','cloturee','annule','annulee','archive','archivee','realise','realisee','non applicable'].includes(norm(v));
+const urgent=v=>['urgent','urgente'].includes(norm(v));
+const name=a=>a?`${a.firstName||''} ${a.lastName||''}`.trim():'Équipe';
+const initials=n=>String(n||'?').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
+const due=r=>String(r?.dueDate||r?.deadline||r?.echeance||r?.endDate||r?.targetDate||r?.dateLimite||r?.date_limit||'').slice(0,10);
 
-function parseAll(){
-  const out=[];
-  for(let i=0;i<localStorage.length;i++){
-    const key=localStorage.key(i),raw=localStorage.getItem(key);
-    try{out.push({key,value:JSON.parse(raw)})}catch{}
-  }
-  return out;
-}
-function flatten(entries){
-  const nodes=[];
-  function walk(v,path,key){
-    if(Array.isArray(v)){
-      if(v.length) nodes.push({key,path,type:'array',value:v});
-      v.forEach((x,i)=>{if(x&&typeof x==='object') walk(x,path+'['+i+']',key)})
-    } else if(v&&typeof v==='object'){
-      nodes.push({key,path,type:'object',value:v});
-      Object.entries(v).forEach(([k,x])=>{if(x&&typeof x==='object') walk(x,path+'.'+k,key)})
-    }
-  }
-  entries.forEach(e=>walk(e.value,e.key,e.key));
-  return nodes;
-}
-function scoreNode(node,terms){
-  const text=norm(node.path+' '+node.key+' '+JSON.stringify(node.value).slice(0,3000));
-  return terms.reduce((s,t)=>s+(text.includes(norm(t))?1:0),0);
-}
-function bestArray(nodes,terms){
-  return nodes.filter(n=>n.type==='array').map(n=>({n,s:scoreNode(n,terms)})).sort((a,b)=>b.s-a.s||b.n.value.length-a.n.value.length)[0]?.n;
-}
-function field(o,names){
-  if(!o||typeof o!=='object') return '';
-  const keys=Object.keys(o);
-  for(const name of names){
-    const k=keys.find(x=>norm(x)===norm(name)||norm(x).includes(norm(name)));
-    if(k) return o[k];
-  }
-  return '';
-}
-function asDate(v){
-  if(!v)return null; const d=new Date(v); return isNaN(d)?null:d;
-}
-function isActiveStatus(v){
-  const s=norm(v); return !/(termine|clos|archive|resolu|annule|inactive)/.test(s);
-}
-function isUrgent(o){
-  const s=norm(field(o,['priorite','urgence','niveau','statut'])+' '+JSON.stringify(o));
-  return /(urgent|haute|critique|retard)/.test(s);
-}
-function initials(n){return String(n||'?').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()}
-function item(title,sub=''){return `<div class="item"><b>${esc(title||'Sans titre')}</b><small>${esc(sub)}</small></div>`}
-function esc(v=''){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function setList(id,arr){$(id).innerHTML=arr.length?arr.slice(0,7).join(''):'<div class="empty">Aucun élément détecté</div>'}
+function db(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}}
+function item(title,sub='',tag='',kind=''){return `<div class="row"><div class="avatar">${initials(title)}</div><div><b>${esc(title)}</b><small>${esc(sub)}</small></div>${tag?`<span class="tag ${kind}">${esc(tag)}</span>`:''}</div>`}
+function setList(id,rows,msg='Aucune donnée'){ $(id).innerHTML=rows.length?rows.join(''):`<div class="empty">${msg}</div>`}
 
-function detect(){
- const entries=parseAll(),nodes=flatten(entries);
+function copyKpisFromPilotage(){
+ try{
+  const doc=$('pilotageSource').contentDocument;
+  if(!doc)return false;
+  const map=[
+   ['agents','kpiAgents'],['present','kpiPresent'],['urgent','kpiUrgentActions'],['late','kpiLate'],
+   ['maint','kpiMaintenance'],['maintTodo','kpiMaintenanceTodo'],['clean','kpiCompliance'],['cleanWeak','kpiCleaningWeak'],
+   ['periodic','kpiPeriodicLate'],['periodicSoon','kpiPeriodicSoon'],['notes','kpiNotes'],['notesDue','kpiNotesDue']
+  ];
+  let n=0;
+  for(const [ours,theirs] of map){const x=doc.getElementById(theirs);if(x&&x.textContent.trim()){ $(ours).textContent=x.textContent.trim();n++}}
+  return n>=8;
+ }catch{return false}
+}
 
- const agentsNode=bestArray(nodes,['agent','agents','personnel','recrutement','nom','prenom','actif']);
- const interventionsNode=bestArray(nodes,['intervention','maintenance','probleme','affecte','echeance','priorite','statut']);
- const absencesNode=bestArray(nodes,['absence','conge','rtt','motif','remplacement','du','au']);
- const rdvNode=bestArray(nodes,['rendez','agenda','objet','lieu','horaire','participants']);
- const controlsNode=bestArray(nodes,['controle','periodique','prochaine','echeance','organisme','equipement']);
- const notesNode=bestArray(nodes,['note','bloc','echeance','priorite','statut']);
- const securityNode=bestArray(nodes,['securite','qualite','problematique','action','priorite','echeance']);
-
- const agents=(agentsNode?.value||[]).filter(x=>x&&typeof x==='object');
- const interventions=(interventionsNode?.value||[]).filter(x=>x&&typeof x==='object');
- const absences=(absencesNode?.value||[]).filter(x=>x&&typeof x==='object');
- const rdvs=(rdvNode?.value||[]).filter(x=>x&&typeof x==='object');
- const controls=(controlsNode?.value||[]).filter(x=>x&&typeof x==='object');
- const notes=(notesNode?.value||[]).filter(x=>x&&typeof x==='object');
- const security=(securityNode?.value||[]).filter(x=>x&&typeof x==='object');
-
- const today=todayISO();
- const absentIds=new Set();
- absences.forEach(a=>{
-   const from=field(a,['du','dateDebut','debut','start','date']);
-   const to=field(a,['au','dateFin','fin','end'])||from;
-   if(from&&to&&String(from).slice(0,10)<=today&&String(to).slice(0,10)>=today){
-     absentIds.add(String(field(a,['agentId','idAgent','agent','nom'])));
+function renderLists(data){
+ const t=today(), agents=(data.agents||[]).filter(a=>norm(a.status)==='actif');
+ const dayRows=data.agentDays||[];
+ const todayDays=dayRows.filter(x=>String(x.date)===t);
+ const agentStatus=a=>{
+   const rec=todayDays.find(x=>String(x.agentId)===String(a.id));
+   if(rec){
+    const typ=rec.dayType||'Présence';
+    if(typ!=='Présence'&&typ!=='Formation') return {text:typ,kind:'bad'};
+    return {text:typ,kind:'good'};
    }
- });
+   const wd=new Date(t+'T12:00:00').getDay(), works=(a.workdays||[1,2,3,4,5]).map(Number).includes(wd);
+   return works?{text:'Présence',kind:'good'}:{text:'Repos',kind:''};
+ };
+ setList('agentList',agents.map(a=>{const s=agentStatus(a);return item(name(a),a.role||a.assignment||'',s.text,s.kind)}),'Aucun agent actif');
 
- const activeAgents=agents.filter(a=>field(a,['actif','active','statut'])!==false && !/inactif/.test(norm(field(a,['statut']))));
- const presentAgents=activeAgents.filter(a=>{
-   const id=String(field(a,['id','agentId','nom','name']));
-   return !absentIds.has(id);
- });
+ const abs=agents.map(a=>({a,s:agentStatus(a)})).filter(x=>x.s.kind==='bad');
+ setList('absenceList',abs.map(x=>item(name(x.a),x.a.role||'',x.s.text,'bad')),'Aucune absence saisie aujourd’hui');
 
- $('agentsCount').textContent=activeAgents.length;
- $('presentText').textContent=`${presentAgents.length} présents aujourd'hui`;
- $('presenceRate').textContent=activeAgents.length?Math.round(presentAgents.length/activeAgents.length*100)+'%':'—';
+ const open=(data.maintenance||[]).filter(x=>!closed(x.status));
+ setList('maintenanceList',open.slice(0,8).map(x=>item(x.title||x.no||'Intervention',[x.building,x.room].filter(Boolean).join(' • '),x.status||'Ouverte','warn')),'Aucune intervention ouverte');
 
- const open=interventions.filter(i=>isActiveStatus(field(i,['statut','status'])));
- const todo=open.filter(i=>/(faire|nouveau|attente|planifie)/.test(norm(field(i,['statut','status']))));
- const urgent=[...security,...interventions].filter(isUrgent).filter(x=>isActiveStatus(field(x,['statut','status'])));
- const late=[...security,...interventions,...controls].filter(o=>{
-   const d=asDate(field(o,['echeance','dateEcheance','prochaine','nextDate']));
-   return d&&d<new Date()&&isActiveStatus(field(o,['statut','status']));
- });
+ const sources=[['issues','Sécurité'],['maintenance','Maintenance'],['requests','Direction'],['works','Chantier'],['notes','Note'],['personalEvents','Agenda']];
+ const urg=[];
+ for(const [k,label] of sources) for(const x of (data[k]||[])) if(!closed(x.status)&&urgent(x.priority)) urg.push({...x,_label:label});
+ setList('urgentList',urg.slice(0,8).map(x=>item(x.title||x.subject||x.no||x._label,`${x._label}${due(x)?' • échéance '+due(x):''}`,'Urgente','bad')),'Aucune action urgente');
 
- $('urgentCount').textContent=urgent.length;
- $('lateText').textContent=`${late.length} en retard`;
- $('openCount').textContent=open.length;
- $('todoText').textContent=`${todo.length} à faire`;
- $('controlCount').textContent=controls.length;
- const soon=controls.filter(o=>{const d=asDate(field(o,['prochaine','echeance','dateEcheance']));return d&&d-new Date()<1000*60*60*24*30&&d>=new Date()});
- $('controlSoon').textContent=`${soon.length} bientôt`;
- const activeNotes=notes.filter(n=>isActiveStatus(field(n,['statut','status'])));
- $('notesCount').textContent=activeNotes.length;
- $('notesSoon').textContent='échéance proche';
+ const meets=(data.meetings||[]).filter(x=>String(x.date||'')>=t&&!closed(x.status)&&norm(x.status)!=='annule').sort((a,b)=>`${a.date}${a.time||''}`.localeCompare(`${b.date}${b.time||''}`));
+ setList('meetingList',meets.slice(0,7).map(x=>item(x.title||'Rendez-vous',`${x.date||''} ${x.time||''} • ${x.location||''}`,x.status||'Planifié','warn')),'Aucun rendez-vous à venir');
 
- $('agentsList').innerHTML=activeAgents.length?activeAgents.slice(0,12).map(a=>{
-   const name=field(a,['nomComplet','nom','name','prenom'])||'Agent';
-   const zone=field(a,['mission','poste','zone','fonction'])||'';
-   const id=String(field(a,['id','agentId','nom','name']));
-   const absent=absentIds.has(id);
-   const assigned=open.some(i=>norm(field(i,['affecte','agent','responsable'])).includes(norm(name)));
-   const status=absent?'Absent':assigned?'En intervention':'Présent';
-   const cl=absent?'absent':assigned?'intervention':'present';
-   return `<div class="agent"><div class="avatar">${initials(name)}</div><div><b>${esc(name)}</b><small>${esc(zone)}</small></div><span class="badge ${cl}">${status}</span></div>`
- }).join(''):'<div class="empty">Aucun agent détecté dans la base locale.</div>';
-
- setList('urgentList',urgent.map(o=>item(field(o,['probleme','objet','titre','libelle'])||'Action urgente',field(o,['lieu','agent','responsable','echeance']))));
- setList('interventionList',open.map(o=>item(field(o,['probleme','objet','titre','domaine'])||'Intervention',`${field(o,['lieu'])||''} ${field(o,['affecte','agent','responsable'])||''}`)));
- setList('absenceList',absences.filter(a=>{const f=field(a,['du','dateDebut','debut','date']);const t=field(a,['au','dateFin','fin'])||f;return f&&t&&String(t).slice(0,10)>=today}).map(a=>item(field(a,['agent','nom','agentNom'])||'Agent',`${field(a,['motif','type'])||'Absence'} • ${field(a,['du','debut','date'])||''}`)));
- setList('rdvList',rdvs.filter(r=>String(field(r,['date','debut'])).slice(0,10)>=today).map(r=>item(field(r,['objet','titre','type'])||'Rendez-vous',`${field(r,['date'])||''} ${field(r,['heure','horaire'])||''} ${field(r,['lieu'])||''}`)));
- setList('controlList',controls.map(c=>item(field(c,['nom','controle','equipement','type'])||'Contrôle',`Échéance : ${field(c,['prochaine','echeance','dateEcheance'])||'—'}`)));
-
- $('todaySummary').innerHTML=[
-   ['Présents',presentAgents.length],['Absents',Math.max(0,activeAgents.length-presentAgents.length)],
-   ['Interventions',open.length],['Urgences',urgent.length],
-   ['Retards',late.length],['Contrôles proches',soon.length]
- ].map(([l,v])=>`<div><strong>${v}</strong><span>${l}</span></div>`).join('');
-
- const detected=[
-   ['Agents',agentsNode],['Interventions',interventionsNode],['Absences',absencesNode],
-   ['Rendez-vous',rdvNode],['Contrôles',controlsNode],['Notes',notesNode],['Sécurité',securityNode]
- ];
- $('sources').innerHTML=detected.map(([name,n])=>`<code>${name} : ${n?esc(n.path)+' ('+n.value.length+')':'non détecté'}</code>`).join('');
-
- const found=detected.filter(x=>x[1]).length;
- $('sync').textContent=found>=4?'Données Pilotage détectées ✓':found?'Connexion partielle':'Aucune donnée détectée';
- $('sync').className='sync '+(found>=4?'ok':'warn');
+ const periodic=(data.periodic||[]).filter(x=>!['cloture','cloturee','non applicable','archive','archivee'].includes(norm(x.status)));
+ const pStatus=x=>{
+   let d=x.nextDate||'';
+   if(!d&&x.lastDate&&Number(x.intervalMonths)>0){const z=new Date(x.lastDate+'T12:00:00');z.setMonth(z.getMonth()+Number(x.intervalMonths));d=iso(z)}
+   if(!d)return x.status||'À planifier';
+   const diff=(new Date(d+'T12:00:00')-new Date(t+'T12:00:00'))/86400000;
+   return diff<0?'En retard':diff<=60?'Bientôt':'À jour';
+ };
+ setList('periodicList',periodic.slice(0,7).map(x=>{const s=pStatus(x);return item(x.name||'Contrôle',x.nextDate?`Échéance ${x.nextDate}`:(x.provider||''),s,norm(s)==='en retard'?'bad':norm(s)==='bientot'?'warn':'good')}),'Aucun contrôle');
 }
 
-function clock(){
- const d=new Date();
- $('clock').textContent=d.toLocaleDateString('fr-FR')+' • '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+function refresh(){
+ const data=db();
+ if(!data){$('state').textContent='Base Pilotage non trouvée';$('state').className='';return}
+ renderLists(data);
+ const exact=copyKpisFromPilotage();
+ $('state').textContent=exact?'Connecté • données exactes ✓':'Connecté • chargement des compteurs…';
+ $('state').className=exact?'ok':'';
+ $('lastSync').textContent=`Dernière lecture : ${new Date().toLocaleTimeString('fr-FR')} • Version base ${data.version||'—'}`;
 }
-setInterval(clock,1000);clock();
-detect();
-window.addEventListener('storage',detect);
-setInterval(detect,5000);
+$('pilotageSource').addEventListener('load',()=>{setTimeout(refresh,1200);setTimeout(refresh,3500);setTimeout(refresh,7000)});
+window.addEventListener('storage',e=>{if(e.key===KEY)refresh()});
+window.addEventListener('message',refresh);
+$('refresh').onclick=refresh;
+setInterval(refresh,5000);
+setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})},1000);
+refresh();

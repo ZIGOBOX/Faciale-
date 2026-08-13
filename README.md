@@ -1,29 +1,29 @@
-# Suivi des agents — Connexion réelle à Pilotage Service Technique
+# Suivi des agents — collecte automatique réelle
 
-Cette version ne dépend plus d'un faux canal de messages.
+Cette version a été construite à partir des fichiers source de Pilotage Service Technique V121.
 
-Elle analyse directement les données JSON stockées dans `localStorage` par :
-https://zigobox.github.io/service-Technique-2/
+## Source réelle
+La base principale utilise exactement la clé :
+`pilotage-service-technique-v25`
 
-Comme le nouveau dashboard sera lui aussi sous `https://zigobox.github.io/...`, le navigateur autorise l'accès au même stockage d'origine.
+Le dashboard est conçu pour être publié sous le même domaine GitHub Pages :
+- Pilotage : `https://zigobox.github.io/service-Technique-2/`
+- Dashboard conseillé : `https://zigobox.github.io/suivi-agents/`
 
-## Dépôt conseillé
-`suivi-agents`
+## Pourquoi cette version est plus fiable
+Le dashboard charge Pilotage Service Technique dans une iframe invisible, autorisée car les deux pages sont sur `zigobox.github.io`.
+Il récupère directement les KPI déjà calculés par l'application d'origine :
+- Agents actifs / présents
+- Actions urgentes / retards
+- Interventions ouvertes / à faire
+- Conformité ménage / points faibles
+- Contrôles périodiques en retard / bientôt
+- Notes actives / échéances proches
 
-URL :
-https://zigobox.github.io/suivi-agents/
+Les listes utilisent les vrais tableaux de la base V121 :
+`agents`, `agentDays`, `maintenance`, `issues`, `requests`, `works`, `notes`, `personalEvents`, `meetings`, `periodic`.
 
-## Fonctionnement
-Le dashboard recherche automatiquement dans la base locale les jeux de données correspondant à :
-- agents ;
-- interventions ;
-- absences / congés / RTT ;
-- rendez-vous ;
-- contrôles périodiques ;
-- notes ;
-- sécurité / problématiques.
+Le tableau de bord relit les données toutes les 5 secondes et écoute aussi les changements de localStorage.
 
-Le fichier affiche aussi une rubrique « Dernières données détectées » pour vérifier à quelles structures de la base il s'est connecté.
-
-## Important
-Ouvre d'abord Pilotage Service Technique sur le même navigateur et connecte-toi normalement, puis ouvre Suivi des agents.
+## Installation
+Créer un dépôt `suivi-agents`, placer `index.html`, `style.css`, `dashboard.js` à la racine et activer GitHub Pages.

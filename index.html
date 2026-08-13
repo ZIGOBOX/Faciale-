@@ -1,25 +1,23 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1f36"><title>Suivi des agents</title><link rel="stylesheet" href="style.css"></head>
-<body>
-<header><div><h1>SUIVI DES AGENTS</h1><p>Pilotage Service Technique</p></div><div class="right"><span id="sync" class="sync">Analyse des données…</span><span id="clock"></span><a href="https://zigobox.github.io/service-Technique-2/" target="_blank">Ouvrir le Pilotage ↗</a></div></header>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#075ca8"><title>Suivi des agents</title><link rel="stylesheet" href="style.css"></head><body>
+<header><div><h1>SUIVI DES AGENTS</h1><p>Collecte automatique • Pilotage Service Technique</p></div><div class="headright"><span id="state">Connexion…</span><span id="clock"></span><a href="/service-Technique-2/" target="_blank">Ouvrir Pilotage ↗</a></div></header>
 <main>
 <section class="kpis">
-<div class="kpi"><b>Agents actifs</b><strong id="agentsCount">0</strong><small id="presentText">0 présents aujourd'hui</small></div>
-<div class="kpi"><b>Actions urgentes</b><strong id="urgentCount">0</strong><small id="lateText">0 en retard</small></div>
-<div class="kpi"><b>Interventions ouvertes</b><strong id="openCount">0</strong><small id="todoText">0 à faire</small></div>
-<div class="kpi"><b>Contrôles périodiques</b><strong id="controlCount">0</strong><small id="controlSoon">0 bientôt</small></div>
-<div class="kpi"><b>Notes actives</b><strong id="notesCount">0</strong><small id="notesSoon">0 échéance proche</small></div>
-<div class="kpi"><b>Présence aujourd'hui</b><strong id="presenceRate">—</strong><small>Équipe disponible</small></div>
+<article class="blue"><span>Agents actifs</span><strong id="agents">—</strong><small id="present">Collecte…</small></article>
+<article class="red"><span>Actions urgentes</span><strong id="urgent">—</strong><small id="late">Collecte…</small></article>
+<article class="orange"><span>Interventions ouvertes</span><strong id="maint">—</strong><small id="maintTodo">Collecte…</small></article>
+<article class="green"><span>Conformité ménage</span><strong id="clean">—</strong><small id="cleanWeak">Collecte…</small></article>
+<article class="purple"><span>Contrôles périodiques</span><strong id="periodic">—</strong><small id="periodicSoon">Collecte…</small></article>
+<article class="cyan"><span>Notes actives</span><strong id="notes">—</strong><small id="notesDue">Collecte…</small></article>
 </section>
-
 <section class="grid">
-<article class="panel wide"><h2>Présence des agents</h2><div id="agentsList" class="agents"></div></article>
-<article class="panel"><h2>Résumé aujourd'hui</h2><div id="todaySummary" class="summary"></div></article>
-<article class="panel"><h2>Actions urgentes</h2><div id="urgentList" class="list"></div></article>
-<article class="panel"><h2>Interventions en cours</h2><div id="interventionList" class="list"></div></article>
-<article class="panel"><h2>Absences / RTT / congés</h2><div id="absenceList" class="list"></div></article>
-<article class="panel"><h2>Prochains rendez-vous</h2><div id="rdvList" class="list"></div></article>
-<article class="panel"><h2>Contrôles périodiques</h2><div id="controlList" class="list"></div></article>
-<article class="panel"><h2>Dernières données détectées</h2><div id="sources" class="sources"></div></article>
+<article class="panel span2"><h2>Présence des agents aujourd'hui</h2><div id="agentList"></div></article>
+<article class="panel"><h2>Interventions ouvertes</h2><div id="maintenanceList"></div></article>
+<article class="panel"><h2>Actions urgentes</h2><div id="urgentList"></div></article>
+<article class="panel"><h2>Absences / RTT / congés aujourd'hui</h2><div id="absenceList"></div></article>
+<article class="panel"><h2>Prochains rendez-vous</h2><div id="meetingList"></div></article>
+<article class="panel"><h2>Contrôles périodiques</h2><div id="periodicList"></div></article>
+<article class="panel"><h2>Synchronisation</h2><div class="syncbox"><b>Source</b><code>pilotage-service-technique-v25</code><p id="lastSync">En attente…</p><button id="refresh">Actualiser maintenant</button></div></article>
 </section>
 </main>
+<iframe id="pilotageSource" src="/service-Technique-2/" title="Source Pilotage Service Technique"></iframe>
 <script src="dashboard.js"></script></body></html>
