@@ -61,6 +61,11 @@ function mergePilotageData(local,cloud){
 }
 function db(){return mergePilotageData(localDb(),cloudDb)}
 
+function roomPrepAgendaItems(){
+  try{return JSON.parse(localStorage.getItem('pst_room_preps_v106')||'[]')||[]}catch(_){return[]}
+}
+
+
 async function ensureCloudClient(){
   if(supabaseClient)return supabaseClient;
   const cfg=window.SUPABASE_CONFIG||{};
@@ -225,14 +230,100 @@ function renderKpis(data){
 }
 function planningForDay(data,date=todayISO()){
   const rows=[];
+
+  // Agenda personnel + réunions / rendez-vous
   for(const x of [...(data.meetings||[]).filter(x=>normalizeDateValue(x.date)===date),...(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===date)]){
-    rows.push({time:x.time||x.start||'',icon:'📅',title:x.title||'Rendez-vous',sub:[x.location,x.type,x.status].filter(Boolean).join(' • '),tag:x.type||'Agenda',kind:isUrgentPriority(x.priority)?'bad':'warn',order:1});
+    rows.push({
+      time:x.time||x.start||'',
+      icon:'📅',
+      title:x.title||'Rendez-vous',
+      sub:[x.location,x.type,x.status].filter(Boolean).join(' • '),
+      tag:x.type||'Agenda',
+      kind:isUrgentPriority(x.priority)?'bad':'warn',
+      order:1
+    });
   }
+
+  // Préparation salle & café — stockage séparé utilisé par Pilotage.
+  for(const x of roomPrepAgendaItems().filter(x=>normalizeDateValue(x.date)===date&&norm(x.status)!=='termine')){
+    rows.push({
+      time:x.time||'',
+      icon:'☕',
+      title:`${x.room||'Préparation salle'}${x.coffee?.enabled?' · Café':''}`,
+      sub:[x.status,x.coffee?.enabled?'Café demandé':''].filter(Boolean).join(' • '),
+      tag:'Salle & café',
+      kind:'warn',
+      order:2
+    });
+  }
+
+  // Interventions maintenance du jour ou arrivant à échéance aujourd'hui.
   for(const x of (data.maintenance||[]).filter(x=>normalizeDateValue(x.date)===date||recordDueDate(x)===date)){
     if(isClosedStatus(x.status))continue;
-    rows.push({time:x.time||'',icon:'🔧',title:x.title||x.no||'Intervention',sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),tag:'Intervention',kind:isUrgentPriority(x.priority)?'bad':'warn',order:2});
+    rows.push({
+      time:x.time||'',
+      icon:'🔧',
+      title:x.title||x.no||'Intervention',
+      sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),
+      tag:'Intervention',
+      kind:isUrgentPriority(x.priority)?'bad':'warn',
+      order:3
+    });
   }
-  return rows.sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99')||a.order-b.order);
+
+  // Demandes direction arrivant à échéance aujourd'hui.
+  for(const x of (data.requests||[]).filter(x=>recordDueDate(x)===date&&!isClosedStatus(x.status))){
+    rows.push({
+      time:'',
+      icon:'↗',
+      title:`Direction · ${x.title||x.description||'Demande'}`,
+      sub:[x.priority,x.status].filter(Boolean).join(' • '),
+      tag:'Direction',
+      kind:isUrgentPriority(x.priority)?'bad':'warn',
+      order:4
+    });
+  }
+
+  // Chantiers / GPA à échéance aujourd'hui.
+  for(const x of (data.works||[]).filter(x=>recordDueDate(x)===date&&!isClosedStatus(x.status))){
+    rows.push({
+      time:'',
+      icon:'🏗',
+      title:`Chantier/GPA · ${x.title||'Action'}`,
+      sub:[x.priority,x.status].filter(Boolean).join(' • '),
+      tag:'Chantier',
+      kind:isUrgentPriority(x.priority)?'bad':'warn',
+      order:5
+    });
+  }
+
+  // Sécurité / qualité à échéance aujourd'hui.
+  for(const x of (data.issues||[]).filter(x=>recordDueDate(x)===date&&!isClosedStatus(x.status))){
+    rows.push({
+      time:'',
+      icon:'⚠',
+      title:x.title||x.description||'Sécurité / qualité',
+      sub:[x.priority,x.status].filter(Boolean).join(' • '),
+      tag:'Sécurité',
+      kind:isUrgentPriority(x.priority)?'bad':'warn',
+      order:6
+    });
+  }
+
+  // Contrôles périodiques prévus aujourd'hui.
+  for(const x of (data.periodic||[]).filter(x=>periodicDue(x)===date)){
+    rows.push({
+      time:'',
+      icon:'🛡',
+      title:`Contrôle périodique · ${x.name||x.title||x.family||'Contrôle'}`,
+      sub:[x.family,x.status].filter(Boolean).join(' • '),
+      tag:'Contrôle',
+      kind:'warn',
+      order:7
+    });
+  }
+
+  return rows.sort((a,b)=>`${a.time||'99:99'}${a.title||''}`.localeCompare(`${b.time||'99:99'}${b.title||''}`));
 }
 function renderPlanning(data){
   const p=planningForDay(data);
@@ -295,8 +386,9 @@ async function sync(){
     if(!data)throw new Error('Aucune donnée Pilotage disponible');
     renderAll(data);
     const todayPersonal=(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===todayISO()).length;
+    const todayCoffee=roomPrepAgendaItems().filter(x=>normalizeDateValue(x.date)===todayISO()&&norm(x.status)!=='termine').length;
     const ts=cloudUpdatedAt?new Date(cloudUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):new Date().toLocaleTimeString('fr-FR');
-    $('lastSync').textContent=`Local + cloud fusionnés • ${todayPersonal} événement(s) agenda aujourd’hui • cloud ${ts}`;
+    $('lastSync').textContent=`Agenda : ${todayPersonal} événement(s) + ${todayCoffee} préparation(s) salle/café aujourd’hui • cloud ${ts}`;
     setState('Connecté au Pilotage ✓',true);
   }catch(e){
     console.error(e);const data=mergePilotageData(localDb(),cloudDb);
@@ -307,7 +399,7 @@ async function sync(){
 
 
 window.addEventListener('storage',e=>{
-  if(e.key===STORAGE_KEY){
+  if(e.key===STORAGE_KEY||e.key==='pst_room_preps_v106'){
     const data=localDb();
     if(data){
       renderAll(data);
