@@ -44,11 +44,7 @@ function renderLists(data){
    const wd=new Date(t+'T12:00:00').getDay(), works=(a.workdays||[1,2,3,4,5]).map(Number).includes(wd);
    return works?{text:'Présence',kind:'good'}:{text:'Repos',kind:''};
  };
- $('agentList').innerHTML=agents.length?agents.map(a=>{const s=agentStatus(a);return `<div class="agent-tile"><div class="avatar">${initials(name(a))}</div><div><b>${esc(name(a))}</b><small>${esc(s.text)}</small></div><span class="agent-status ${s.kind||''}"></span></div>`}).join(''):'<div class="empty">Aucun agent actif</div>';
- const presentCount=agents.filter(a=>agentStatus(a).kind==='good').length;
- const presencePct=agents.length?Math.round(presentCount/agents.length*100):0;
- if($('presenceGauge'))$('presenceGauge').style.width=presencePct+'%';
- if($('presenceGaugeText'))$('presenceGaugeText').textContent=presencePct+'%';
+ setList('agentList',agents.map(a=>{const s=agentStatus(a);return item(name(a),a.role||a.assignment||'',s.text,s.kind)}),'Aucun agent actif');
 
  const abs=agents.map(a=>({a,s:agentStatus(a)})).filter(x=>x.s.kind==='bad');
  setList('absenceList',abs.map(x=>item(name(x.a),x.a.role||'',x.s.text,'bad')),'Aucune absence saisie aujourd’hui');
@@ -76,75 +72,78 @@ function renderLists(data){
 }
 
 
-function numericText(id){
- const el=$(id); if(!el)return 0;
- const m=String(el.textContent||'').replace(',','.').match(/-?\d+(?:\.\d+)?/);
- return m?Number(m[0]):0;
+function drawSpark(id,values,color){
+ const c=$(id);if(!c)return;const r=c.getBoundingClientRect(),w=Math.max(120,r.width||180),h=Math.max(38,r.height||48),dpr=window.devicePixelRatio||1;
+ c.width=w*dpr;c.height=h*dpr;const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
+ const max=Math.max(1,...values),min=Math.min(0,...values),range=Math.max(1,max-min);
+ x.strokeStyle='#e8edf2';x.beginPath();x.moveTo(0,h-8);x.lineTo(w,h-8);x.stroke();
+ x.beginPath();values.forEach((v,i)=>{const px=5+(w-10)*(i/(values.length-1||1)),py=5+(h-16)*(1-(v-min)/range);i?x.lineTo(px,py):x.moveTo(px,py)});x.strokeStyle=color;x.lineWidth=2;x.stroke();
+ values.forEach((v,i)=>{const px=5+(w-10)*(i/(values.length-1||1)),py=5+(h-16)*(1-(v-min)/range);x.beginPath();x.arc(px,py,2.3,0,Math.PI*2);x.fillStyle=color;x.fill()});
 }
-function renderPriorityVisual(data){
- const sources=[['issues','Sécurité'],['maintenance','Maintenance'],['requests','Direction'],['works','Chantier'],['notes','Note'],['personalEvents','Agenda']];
- const counts={Urgente:0,Haute:0,Normale:0,Basse:0};
- for(const [k] of sources){
-   for(const x of (data[k]||[])){
-     if(closed(x.status))continue;
-     const p=String(x.priority||'Normale');
-     if(urgent(p))counts.Urgente++;
-     else if(norm(p)==='haute')counts.Haute++;
-     else if(norm(p)==='basse')counts.Basse++;
-     else counts.Normale++;
-   }
- }
- const total=Object.values(counts).reduce((a,b)=>a+b,0);
- if($('priorityTotal'))$('priorityTotal').textContent=total;
- const vals=[counts.Urgente,counts.Haute,counts.Normale,counts.Basse];
- const colors=['#d92f3d','#ef8b1e','#1676c8','#189558'];
- let acc=0, stops=[];
- vals.forEach((v,i)=>{const from=total?acc/total*100:0;acc+=v;const to=total?acc/total*100:0;stops.push(`${colors[i]} ${from}% ${to}%`)});
- if($('priorityDonut'))$('priorityDonut').style.background=total?`conic-gradient(${stops.join(',')})`:'#e8edf2';
- const labels=[['Urgente',counts.Urgente,colors[0]],['Haute',counts.Haute,colors[1]],['Normale',counts.Normale,colors[2]],['Basse',counts.Basse,colors[3]]];
- if($('priorityLegend'))$('priorityLegend').innerHTML=labels.map(([l,v,c])=>`<div class="legend-row"><i style="background:${c}"></i><span>${l}</span><b>${v}</b></div>`).join('');
+function recentCounts(arr,dateFields){
+ const days=[],vals=[];for(let i=6;i>=0;i--){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-i);days.push(d);vals.push(0)}
+ for(const x of arr||[]){let raw='';for(const f of dateFields){if(x?.[f]){raw=x[f];break}}const d=new Date(raw);if(Number.isNaN(d.getTime()))continue;const idx=days.findIndex(z=>iso(z)===iso(d));if(idx>=0)vals[idx]++}
+ return {days,vals};
+}
+function renderPresence(data){
+ const t=today(),agents=(data.agents||[]).filter(a=>norm(a.status)==='actif'),dayRows=data.agentDays||[],todayDays=dayRows.filter(x=>String(x.date)===t);
+ const present=agents.filter(a=>{const rec=todayDays.find(x=>String(x.agentId)===String(a.id));if(rec){const typ=rec.dayType||'Présence';return typ==='Présence'||typ==='Formation'}const wd=new Date(t+'T12:00:00').getDay();return (a.workdays||[1,2,3,4,5]).map(Number).includes(wd)}).length;
+ const pct=agents.length?Math.round(present/agents.length*100):0;
+ $('presencePct').textContent=pct+'%';$('presenceRing').style.background=`conic-gradient(#22a55b 0 ${pct}%,#edf2f6 ${pct}% 100%)`;
+}
+function renderPlanning(data){
+ const t=today();
+ const rows=[];
+ for(const x of (data.meetings||[]))if(String(x.date||'')===t&&!closed(x.status))rows.push({time:x.time||'',title:x.title||'Rendez-vous',sub:x.location||'',status:x.status||'Planifié'});
+ for(const x of (data.maintenance||[])){const d=String(x.date||x.startDate||x.requestDate||x.createdAt||'').slice(0,10);if(d===t&&!closed(x.status))rows.push({time:x.time||'',title:x.title||x.no||'Intervention',sub:[x.building,x.room].filter(Boolean).join(' • '),status:x.status||'En cours'})}
+ rows.sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
+ $('planningCount').textContent=rows.length;
+ $('todayPlanning').innerHTML=rows.length?rows.slice(0,6).map(r=>`<div class="row"><div class="avatar">◷</div><div><b>${esc((r.time?r.time+' ':'')+r.title)}</b><small>${esc(r.sub)}</small></div><span class="tag ${norm(r.status).includes('cours')?'warn':'good'}">${esc(r.status)}</span></div>`).join(''):'<div class="empty">Aucune intervention planifiée aujourd’hui</div>';
+ return rows.length;
+}
+function renderUrgencyDonut(data){
+ const all=[];for(const k of ['issues','maintenance','requests','works','notes','personalEvents'])for(const x of (data[k]||[]))if(!closed(x.status))all.push(x);
+ const very=all.filter(x=>urgent(x.priority)).length;
+ const high=all.filter(x=>norm(x.priority)==='haute').length;
+ const watch=Math.max(0,all.filter(x=>!urgent(x.priority)&&norm(x.priority)!=='haute').length);
+ const total=very+high+watch;$('urgencyTotal').textContent=total;
+ const p1=total?very/total*100:0,p2=total?high/total*100:0;
+ $('urgencyDonut').style.background=total?`conic-gradient(#e53935 0 ${p1}%,#f59e0b ${p1}% ${p1+p2}%,#f6c453 ${p1+p2}% 100%)`:'#edf2f6';
+ $('urgencyLegend').innerHTML=[
+   ['Très urgentes',very,'#e53935'],['Urgentes',high,'#f59e0b'],['À surveiller',watch,'#f6c453']
+ ].map(([l,v,c])=>`<div class="urgency-row"><i style="background:${c}"></i><span>${l}</span><b>${v}</b></div>`).join('');
 }
 function renderDomainBars(data){
- const open=(data.maintenance||[]).filter(x=>!closed(x.status));
- const map=new Map();
- for(const x of open){
-   const k=x.family||x.category||x.domain||x.type||'Autre';
-   map.set(k,(map.get(k)||0)+1);
- }
- const rows=[...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6), max=Math.max(1,...rows.map(x=>x[1]));
- if($('domainBars'))$('domainBars').innerHTML=rows.length?rows.map(([k,v])=>`<div class="domain-row"><b>${esc(k)}</b><div class="bartrack"><div class="barfill" style="width:${Math.round(v/max*100)}%"></div></div><strong>${v}</strong></div>`).join(''):'<div class="empty">Aucune intervention ouverte</div>';
+ const open=(data.maintenance||[]).filter(x=>!closed(x.status)),m=new Map();
+ for(const x of open){const k=x.family||x.category||x.domain||x.type||'Autre';m.set(k,(m.get(k)||0)+1)}
+ const rows=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5),max=Math.max(1,...rows.map(x=>x[1]));
+ $('domainBars').innerHTML=rows.length?rows.map(([k,v])=>`<div class="domain-row"><b>${esc(k)}</b><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%"></div></div><strong>${Math.round(v/max*100)}%</strong></div>`).join(''):'<div class="empty">Aucune intervention ouverte</div>';
 }
-function maintenanceDate(x){
- const raw=x.createdAt||x.created||x.date||x.startDate||x.requestDate||x.updatedAt||'';
- const d=new Date(raw); return Number.isNaN(d.getTime())?null:d;
+function renderMainChart(data){
+ const c=$('mainChart');if(!c)return;const r=c.getBoundingClientRect(),w=Math.max(500,r.width||900),h=Math.max(260,r.height||315),dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;
+ const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+ const urg=recentCounts([...(data.issues||[]),...(data.requests||[])],['createdAt','date','startDate']);
+ const mai=recentCounts(data.maintenance||[],['createdAt','date','startDate','requestDate']);
+ const per=recentCounts(data.periodic||[],['nextDate','lastDate']);
+ const t=today(),agents=(data.agents||[]).filter(a=>norm(a.status)==='actif'),days=urg.days;
+ const pres=days.map(d=>{const ds=iso(d),dayRows=(data.agentDays||[]).filter(x=>String(x.date)===ds);if(!agents.length)return 0;let p=0;for(const a of agents){const rec=dayRows.find(x=>String(x.agentId)===String(a.id));if(rec){const typ=rec.dayType||'Présence';if(typ==='Présence'||typ==='Formation')p++}else{const wd=d.getDay();if((a.workdays||[1,2,3,4,5]).map(Number).includes(wd))p++}}return Math.round(p/agents.length*100)});
+ const series=[{v:urg.vals,c:'#e53935'},{v:mai.vals,c:'#2f80ed'},{v:per.vals,c:'#f59e0b'},{v:pres,c:'#22a55b'}];
+ const max=Math.max(100,...series.flatMap(s=>s.v)),pad={l:34,r:12,t:12,b:28},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
+ ctx.strokeStyle='#e8edf2';ctx.lineWidth=1;for(let i=0;i<=5;i++){const y=pad.t+ch*i/5;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillStyle='#7b8897';ctx.font='10px sans-serif';ctx.fillText(String(Math.round(max*(1-i/5))),2,y+3)}
+ series.forEach(s=>{ctx.beginPath();s.v.forEach((v,i)=>{const x=pad.l+cw*i/6,y=pad.t+ch-(v/max)*ch;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.strokeStyle=s.c;ctx.lineWidth=2.2;ctx.stroke();s.v.forEach((v,i)=>{const x=pad.l+cw*i/6,y=pad.t+ch-(v/max)*ch;ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=s.c;ctx.fill()})});
+ days.forEach((d,i)=>{ctx.fillStyle='#69788a';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.',''),pad.l+cw*i/6,h-7)});
 }
-function renderActivityChart(data){
- const canvas=$('activityChart'); if(!canvas)return;
- const dpr=Math.max(1,window.devicePixelRatio||1), rect=canvas.getBoundingClientRect();
- const w=Math.max(300,Math.round(rect.width||720)),h=Math.max(150,Math.round(rect.height||190));
- canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
- const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
- const days=[], vals=[];
- for(let i=6;i>=0;i--){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-i);days.push(d);vals.push(0)}
- for(const x of (data.maintenance||[])){
-   const d=maintenanceDate(x);if(!d)continue;
-   const key=iso(d), idx=days.findIndex(z=>iso(z)===key);if(idx>=0)vals[idx]++;
- }
- const max=Math.max(1,...vals),pad={l:20,r:14,t:14,b:15},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
- ctx.strokeStyle='#dfe6ec';ctx.lineWidth=1;
- for(let i=0;i<4;i++){const y=pad.t+ch*i/3;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke()}
- const pts=vals.map((v,i)=>({x:pad.l+cw*(i/(vals.length-1||1)),y:pad.t+ch-(v/max)*ch}));
- ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.lineTo(pts.at(-1).x,pad.t+ch);ctx.lineTo(pts[0].x,pad.t+ch);ctx.closePath();
- const grad=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);grad.addColorStop(0,'rgba(22,118,200,.28)');grad.addColorStop(1,'rgba(22,118,200,.02)');ctx.fillStyle=grad;ctx.fill();
- ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#1676c8';ctx.lineWidth=3;ctx.lineJoin='round';ctx.stroke();
- pts.forEach((p,i)=>{ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fillStyle=vals[i]?'#1676c8':'#b8c5d0';ctx.fill()});
- if($('activityLabels'))$('activityLabels').innerHTML=days.map(d=>`<span>${d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','')}</span>`).join('');
- if($('weekTotal'))$('weekTotal').textContent=vals.reduce((a,b)=>a+b,0);
+function renderSparks(data){
+ const u=recentCounts([...(data.issues||[]),...(data.requests||[])],['createdAt','date','startDate']).vals;
+ const m=recentCounts(data.maintenance||[],['createdAt','date','startDate','requestDate']).vals;
+ const p=recentCounts(data.periodic||[],['nextDate','lastDate']).vals;
+ const plan=recentCounts([...(data.meetings||[]),...(data.maintenance||[])],['date','startDate','requestDate','createdAt']).vals;
+ drawSpark('sparkUrgent',u,'#e53935');drawSpark('sparkMaint',m,'#2f80ed');drawSpark('sparkPeriodic',p,'#e53935');drawSpark('sparkPlanning',plan,'#f59e0b');
+ drawSpark('sparkClean',[95,96,94,95,96,95,96],'#22a55b');
 }
 function renderVisuals(data){
- renderPriorityVisual(data);
- renderDomainBars(data);
- renderActivityChart(data);
+ renderPresence(data);renderPlanning(data);renderUrgencyDonut(data);renderDomainBars(data);renderMainChart(data);renderSparks(data);
+ const d=new Date();$('todayTitle').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});$('lastUpdate').textContent='Mise à jour : '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
 
 function refresh(){
@@ -165,4 +164,4 @@ setInterval(refresh,5000);
 setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})},1000);
 refresh();
 
-window.addEventListener('resize',()=>{const data=db();if(data)renderActivityChart(data)});
+$('refreshTop').addEventListener('click',refresh);window.addEventListener('resize',()=>{const data=db();if(data){renderMainChart(data);renderSparks(data)}});

@@ -1,17 +1,19 @@
-# Suivi des agents — Version VISUELLE RAPIDE
+# Tableau de bord quotidien — fond blanc
 
-Cette version conserve exactement la collecte automatique qui fonctionne avec Pilotage Service Technique.
+Cette version conserve la connexion automatique au Pilotage Service Technique et reprend le visuel validé :
+- fond blanc ;
+- 6 indicateurs en haut ;
+- urgences en rouge ;
+- planning du jour ;
+- présence agents ;
+- contrôles périodiques ;
+- interventions ouvertes ;
+- conformité ménage ;
+- graphique 7 jours ;
+- répartition des urgences ;
+- charge de travail ;
+- top 5 urgences ;
+- contrôles périodiques en retard ;
+- accès direct à Pilotage Service Technique.
 
-Seul l'affichage a été retravaillé :
-- lecture en 5 secondes ;
-- rouge = urgent / retard ;
-- orange = à traiter / à surveiller ;
-- vert = OK / présence ;
-- bleu = information / activité ;
-- anneau de répartition des priorités ;
-- courbe des interventions sur 7 jours ;
-- jauge de présence ;
-- barres de charge par domaine ;
-- listes compactes d'urgences, contrôles, maintenance, absences et rendez-vous.
-
-La source reste `pilotage-service-technique-v25` et le mécanisme de collecte via la page Pilotage n'a pas été modifié.
+Le système de collecte automatique existant est conservé.
