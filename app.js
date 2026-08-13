@@ -1,341 +1,119 @@
-const video = document.getElementById('video');
-const overlay = document.getElementById('overlay');
-const statusEl = document.getElementById('status');
-const registerFaceBtn = document.getElementById('registerFace');
-const clearFaceBtn = document.getElementById('clearFace');
-const startCameraBtn = document.getElementById('startCamera');
-const savedFaceEl = document.getElementById('savedFace');
-const recognizedEl = document.getElementById('recognized');
-const similarityEl = document.getElementById('similarity');
-const spinBtn = document.getElementById('spinBtn');
-const autoSpin = document.getElementById('autoSpin');
-const cooldownSelect = document.getElementById('cooldown');
-const threshold = document.getElementById('threshold');
-const thresholdValue = document.getElementById('thresholdValue');
-const winnerEl = document.getElementById('winner');
-const prizeDialog = document.getElementById('prizeDialog');
-const prizeText = document.getElementById('prizeText');
-const editPrizes = document.getElementById('editPrizes');
-const savePrizes = document.getElementById('savePrizes');
+const $=id=>document.getElementById(id);
+const video=$('video'),overlay=$('overlay'),statusEl=$('status'),badge=$('faceBadge');
+const cameraBtn=$('cameraBtn'),saveBtn=$('saveBtn'),deleteBtn=$('deleteBtn');
+const detectedEl=$('detected'),savedEl=$('saved'),recognizedEl=$('recognized'),similarityEl=$('similarity'),help=$('help');
+const threshold=$('threshold'),thresholdLabel=$('thresholdLabel'),cooldown=$('cooldown'),autoSpin=$('autoSpin');
+const wheel=$('wheel'),ctxW=wheel.getContext('2d'),spinBtn=$('spinBtn'),winner=$('winner');
+const dialog=$('dialog'),prizesInput=$('prizesInput'),editBtn=$('editBtn'),saveEdit=$('saveEdit'),cancelEdit=$('cancelEdit');
 
-let human;
-let currentEmbedding = null;
-let savedEmbedding = null;
-let cameraRunning = false;
-let lastTrigger = 0;
-let spinning = false;
+let human=null,running=false,busy=false,currentEmbedding=null,savedEmbedding=null,lastSpin=0,spinning=false,angle=0;
+let prizes=JSON.parse(localStorage.getItem('zigobox_prizes_v2')||'null')||['🎁 Cadeau','📸 Photo offerte','⭐ Surprise','🎉 Bravo !','😄 Rejoue','💝 Bonus','🥳 Jackpot','✨ Goodie'];
 
-let prizes = JSON.parse(localStorage.getItem('zigobox_prizes') || 'null') || [
-  '🎁 Cadeau',
-  '📸 Photo offerte',
-  '⭐ Surprise',
-  '🎉 Bravo !',
-  '😄 Rejoue',
-  '💝 Lot bonus',
-  '🥳 Jackpot',
-  '✨ Goodie'
-];
+function setStatus(t,c='warn'){statusEl.textContent=t;statusEl.className='pill '+c}
+function loadSaved(){try{savedEmbedding=JSON.parse(localStorage.getItem('zigobox_face_v2')||'null')}catch{savedEmbedding=null}savedEl.textContent=savedEmbedding?'Oui ✓':'Non'}
+loadSaved();
 
-function setStatus(text, type='') {
-  statusEl.textContent = text;
-  statusEl.className = 'status ' + type;
-}
-
-function loadSavedFace() {
-  try {
-    const raw = localStorage.getItem('zigobox_face_embedding');
-    savedEmbedding = raw ? JSON.parse(raw) : null;
-    savedFaceEl.textContent = savedEmbedding ? 'Oui' : 'Non';
-  } catch {
-    savedEmbedding = null;
-    savedFaceEl.textContent = 'Non';
-  }
-}
-
-async function initHuman() {
-  setStatus('Chargement de l’IA…', 'warn');
-  const config = {
-    backend: 'webgl',
-    cacheSensitivity: 0,
-    face: {
-      enabled: true,
-      detector: { rotation: true, maxDetected: 1 },
-      mesh: { enabled: true },
-      iris: { enabled: false },
-      description: { enabled: true },
-      emotion: { enabled: false }
-    },
-    body: { enabled: false },
-    hand: { enabled: false },
-    object: { enabled: false },
-    gesture: { enabled: false }
-  };
-
-  human = new Human.Human(config);
-  await human.load();
-  await human.warmup();
-  setStatus('IA prête', 'ok');
-}
-
-async function startCamera() {
-  if (cameraRunning) return;
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
+async function initHuman(){
+  try{
+    human=new Human.Human({
+      backend:'webgl',
+      modelBasePath:'https://cdn.jsdelivr.net/npm/@vladmandic/human/models/',
+      cacheSensitivity:0,
+      face:{
+        enabled:true,
+        detector:{enabled:true,rotation:true,maxDetected:1,return:true,minConfidence:0.35},
+        mesh:{enabled:true},
+        iris:{enabled:false},
+        description:{enabled:true},
+        emotion:{enabled:false},
+        antispoof:{enabled:false},
+        liveness:{enabled:false}
+      },
+      body:{enabled:false},hand:{enabled:false},object:{enabled:false},gesture:{enabled:false}
     });
-    video.srcObject = stream;
+    await human.load();
+    await human.warmup();
+    setStatus('IA prête','ok');
+  }catch(e){console.error(e);setStatus('Erreur IA','bad');help.textContent='Impossible de charger les modèles IA. Recharge la page avec Internet.'}
+}
+
+async function startCamera(){
+  if(!human) await initHuman();
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    video.srcObject=stream;
+    await new Promise(resolve=>{if(video.readyState>=2)return resolve();video.onloadedmetadata=resolve});
     await video.play();
-    cameraRunning = true;
-    startCameraBtn.textContent = 'Caméra active';
-    startCameraBtn.disabled = true;
-    setStatus('Caméra active', 'ok');
+    running=true;
+    cameraBtn.disabled=true;
+    cameraBtn.textContent='Caméra active ✓';
+    setStatus('Caméra active','ok');
+    help.textContent='Regarde la caméra. Le bouton devient actif dès que le visage est exploitable.';
     detectLoop();
-  } catch (err) {
-    console.error(err);
-    setStatus('Caméra refusée ou indisponible', 'warn');
-    alert("Impossible d'accéder à la caméra. Sur GitHub Pages, vérifie que tu es bien en HTTPS et autorise la caméra.");
-  }
+  }catch(e){console.error(e);setStatus('Caméra indisponible','bad');alert("La caméra n'a pas pu démarrer. Vérifie l'autorisation caméra de Chrome.")}
 }
 
-function cosineSimilarity(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
-  let dot = 0, na = 0, nb = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
+function drawBox(face,match){
+  overlay.width=video.videoWidth||640;overlay.height=video.videoHeight||480;
+  const c=overlay.getContext('2d');c.clearRect(0,0,overlay.width,overlay.height);
+  if(!face?.box)return;
+  const [x,y,w,h]=face.box;c.strokeStyle=match?'#22c55e':'#f59e0b';c.lineWidth=5;c.strokeRect(x,y,w,h);
 }
 
-function drawFace(face, isMatch=false) {
-  const ctx = overlay.getContext('2d');
-  overlay.width = video.videoWidth || 640;
-  overlay.height = video.videoHeight || 480;
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
-
-  if (!face?.box) return;
-  const [x, y, w, h] = face.box;
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = isMatch ? '#22c55e' : '#f59e0b';
-  ctx.strokeRect(x, y, w, h);
-  ctx.font = 'bold 24px sans-serif';
-  ctx.fillStyle = isMatch ? '#22c55e' : '#f59e0b';
-  ctx.fillText(isMatch ? 'RECONNU ✓' : 'Visage détecté', x, Math.max(28, y - 10));
-}
-
-async function detectLoop() {
-  if (!cameraRunning) return;
-
-  try {
-    const result = await human.detect(video);
-    const face = result.face && result.face[0];
-
-    if (face) {
-      currentEmbedding = face.embedding || null;
-
-      let score = 0;
-      let isMatch = false;
-
-      if (savedEmbedding && currentEmbedding) {
-        score = cosineSimilarity(savedEmbedding, currentEmbedding);
-        isMatch = score >= Number(threshold.value);
-        similarityEl.textContent = score.toFixed(3);
-        recognizedEl.textContent = isMatch ? 'Oui ✓' : 'Non';
-      } else {
-        similarityEl.textContent = '—';
-        recognizedEl.textContent = 'Non';
-      }
-
-      drawFace(face, isMatch);
-
-      if (isMatch && autoSpin.checked && !spinning) {
-        const now = Date.now();
-        const cooldown = Number(cooldownSelect.value);
-        if (now - lastTrigger > cooldown) {
-          lastTrigger = now;
-          spinWheel();
+async function detectLoop(){
+  if(!running)return;
+  if(!busy&&video.readyState>=2){
+    busy=true;
+    try{
+      const res=await human.detect(video),face=res.face?.[0];
+      if(face){
+        detectedEl.textContent='Oui ✓';badge.textContent='Visage détecté ✓';badge.className='face-badge ok';
+        currentEmbedding=Array.isArray(face.embedding)&&face.embedding.length?Array.from(face.embedding):null;
+        saveBtn.disabled=!currentEmbedding;
+        if(currentEmbedding){
+          help.textContent='Visage exploitable ✓ Tu peux maintenant l’enregistrer.';
+          if(savedEmbedding){
+            const sim=human.match.similarity(savedEmbedding,currentEmbedding);
+            similarityEl.textContent=(sim*100).toFixed(0)+' %';
+            const match=sim>=Number(threshold.value);
+            recognizedEl.textContent=match?'Oui ✓':'Non';
+            drawBox(face,match);
+            if(match&&autoSpin.checked&&!spinning&&Date.now()-lastSpin>Number(cooldown.value)){lastSpin=Date.now();spinWheel()}
+          }else{similarityEl.textContent='—';recognizedEl.textContent='Non';drawBox(face,false)}
+        }else{
+          saveBtn.disabled=true;help.textContent='Visage détecté, calcul de la signature faciale… reste bien face à la caméra.';drawBox(face,false)
         }
+      }else{
+        currentEmbedding=null;saveBtn.disabled=true;detectedEl.textContent='Non';recognizedEl.textContent='Non';similarityEl.textContent='—';
+        badge.textContent='Aucun visage';badge.className='face-badge';overlay.getContext('2d').clearRect(0,0,overlay.width,overlay.height)
       }
-    } else {
-      currentEmbedding = null;
-      recognizedEl.textContent = 'Non';
-      similarityEl.textContent = '—';
-      const ctx = overlay.getContext('2d');
-      ctx.clearRect(0, 0, overlay.width, overlay.height);
-    }
-  } catch (err) {
-    console.warn('Détection:', err);
+    }catch(e){console.warn(e)}
+    busy=false;
   }
-
-  requestAnimationFrame(detectLoop);
+  setTimeout(detectLoop,180);
 }
 
-registerFaceBtn.addEventListener('click', () => {
-  if (!currentEmbedding) {
-    alert("Aucun visage exploitable détecté. Regarde la caméra et réessaie.");
-    return;
-  }
-  localStorage.setItem('zigobox_face_embedding', JSON.stringify(currentEmbedding));
-  savedEmbedding = [...currentEmbedding];
-  savedFaceEl.textContent = 'Oui';
-  setStatus('Visage enregistré', 'ok');
-});
+saveBtn.onclick=()=>{if(!currentEmbedding){alert("Attends que « Visage exploitable ✓ » apparaisse.");return}savedEmbedding=Array.from(currentEmbedding);localStorage.setItem('zigobox_face_v2',JSON.stringify(savedEmbedding));savedEl.textContent='Oui ✓';setStatus('Visage enregistré ✓','ok');help.textContent='C’est enregistré. Éloigne-toi puis reviens devant la caméra pour tester.'};
+deleteBtn.onclick=()=>{localStorage.removeItem('zigobox_face_v2');savedEmbedding=null;savedEl.textContent='Non';recognizedEl.textContent='Non';similarityEl.textContent='—';setStatus('Visage effacé','warn')};
+cameraBtn.onclick=startCamera;
+threshold.oninput=()=>{thresholdLabel.textContent=Number(threshold.value).toFixed(2);localStorage.setItem('zigobox_threshold_v2',threshold.value)};
+const st=localStorage.getItem('zigobox_threshold_v2');if(st){threshold.value=st;thresholdLabel.textContent=Number(st).toFixed(2)}
 
-clearFaceBtn.addEventListener('click', () => {
-  localStorage.removeItem('zigobox_face_embedding');
-  savedEmbedding = null;
-  savedFaceEl.textContent = 'Non';
-  recognizedEl.textContent = 'Non';
-  similarityEl.textContent = '—';
-  setStatus('Visage effacé', 'warn');
-});
-
-threshold.addEventListener('input', () => {
-  thresholdValue.textContent = Number(threshold.value).toFixed(2);
-  localStorage.setItem('zigobox_threshold', threshold.value);
-});
-
-const savedThreshold = localStorage.getItem('zigobox_threshold');
-if (savedThreshold) {
-  threshold.value = savedThreshold;
-  thresholdValue.textContent = Number(savedThreshold).toFixed(2);
+function drawWheel(){
+  const c=300,r=282,s=Math.PI*2/prizes.length;ctxW.clearRect(0,0,600,600);
+  prizes.forEach((p,i)=>{const a=angle+i*s;ctxW.beginPath();ctxW.moveTo(c,c);ctxW.arc(c,c,r,a,a+s);ctxW.closePath();ctxW.fillStyle=`hsl(${(i*360/prizes.length+18)%360} 80% 54%)`;ctxW.fill();ctxW.strokeStyle='#fff';ctxW.lineWidth=3;ctxW.stroke();ctxW.save();ctxW.translate(c,c);ctxW.rotate(a+s/2);ctxW.fillStyle='#fff';ctxW.textAlign='right';ctxW.font='bold 22px sans-serif';ctxW.fillText(p,r-25,7);ctxW.restore()});
+  ctxW.beginPath();ctxW.arc(c,c,62,0,Math.PI*2);ctxW.fillStyle='#111827';ctxW.fill();ctxW.strokeStyle='#fff';ctxW.lineWidth=7;ctxW.stroke();ctxW.fillStyle='#fff';ctxW.textAlign='center';ctxW.textBaseline='middle';ctxW.font='bold 25px sans-serif';ctxW.fillText('ZiGoBox',c,c)
 }
-
-startCameraBtn.addEventListener('click', startCamera);
-
-// ---------------- ROUE ----------------
-
-const wheel = document.getElementById('wheel');
-const wctx = wheel.getContext('2d');
-let angle = 0;
-
-function drawWheel() {
-  const size = wheel.width;
-  const center = size / 2;
-  const radius = center - 14;
-  const slice = Math.PI * 2 / prizes.length;
-
-  wctx.clearRect(0, 0, size, size);
-
-  for (let i = 0; i < prizes.length; i++) {
-    const start = angle + i * slice;
-    const end = start + slice;
-
-    const hue = (i * 360 / prizes.length + 20) % 360;
-    wctx.beginPath();
-    wctx.moveTo(center, center);
-    wctx.arc(center, center, radius, start, end);
-    wctx.closePath();
-    wctx.fillStyle = `hsl(${hue} 82% 55%)`;
-    wctx.fill();
-
-    wctx.strokeStyle = 'rgba(255,255,255,.75)';
-    wctx.lineWidth = 4;
-    wctx.stroke();
-
-    wctx.save();
-    wctx.translate(center, center);
-    wctx.rotate(start + slice / 2);
-    wctx.textAlign = 'right';
-    wctx.fillStyle = '#fff';
-    wctx.font = 'bold 23px sans-serif';
-    wctx.shadowColor = 'rgba(0,0,0,.4)';
-    wctx.shadowBlur = 4;
-    wctx.fillText(prizes[i], radius - 28, 8);
-    wctx.restore();
-  }
-
-  wctx.beginPath();
-  wctx.arc(center, center, 64, 0, Math.PI * 2);
-  wctx.fillStyle = '#111827';
-  wctx.fill();
-  wctx.strokeStyle = '#fff';
-  wctx.lineWidth = 8;
-  wctx.stroke();
-
-  wctx.fillStyle = '#fff';
-  wctx.textAlign = 'center';
-  wctx.textBaseline = 'middle';
-  wctx.font = 'bold 26px sans-serif';
-  wctx.fillText('ZiGoBox', center, center);
+function winningPrize(){const s=Math.PI*2/prizes.length,p=-Math.PI/2;let rel=(p-angle)%(Math.PI*2);if(rel<0)rel+=Math.PI*2;return prizes[Math.floor(rel/s)%prizes.length]}
+function spinWheel(){
+  if(spinning)return;spinning=true;spinBtn.disabled=true;winner.textContent='La roue tourne…';
+  const start=angle,target=start+(5+Math.random()*3)*Math.PI*2+Math.random()*Math.PI*2,t0=performance.now(),dur=4200;
+  function frame(now){const t=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-t,3);angle=start+(target-start)*e;drawWheel();if(t<1)requestAnimationFrame(frame);else{spinning=false;spinBtn.disabled=false;winner.textContent='🎉 '+winningPrize();if(navigator.vibrate)navigator.vibrate([100,60,160])}}
+  requestAnimationFrame(frame)
 }
-
-function easeOutCubic(t) {
-  return 1 - Math.pow(1 - t, 3);
-}
-
-function getWinner() {
-  const slice = Math.PI * 2 / prizes.length;
-  const pointerAngle = -Math.PI / 2;
-  let relative = (pointerAngle - angle) % (Math.PI * 2);
-  if (relative < 0) relative += Math.PI * 2;
-  const index = Math.floor(relative / slice) % prizes.length;
-  return prizes[index];
-}
-
-function spinWheel() {
-  if (spinning || prizes.length < 2) return;
-  spinning = true;
-  spinBtn.disabled = true;
-  winnerEl.textContent = 'La roue tourne…';
-
-  const startAngle = angle;
-  const turns = 5 + Math.random() * 3;
-  const extra = Math.random() * Math.PI * 2;
-  const target = startAngle + turns * Math.PI * 2 + extra;
-  const duration = 4300;
-  const start = performance.now();
-
-  function animate(now) {
-    const t = Math.min(1, (now - start) / duration);
-    angle = startAngle + (target - startAngle) * easeOutCubic(t);
-    drawWheel();
-
-    if (t < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      spinning = false;
-      spinBtn.disabled = false;
-      const winner = getWinner();
-      winnerEl.textContent = `🎉 ${winner}`;
-      if (navigator.vibrate) navigator.vibrate([120, 80, 180]);
-    }
-  }
-
-  requestAnimationFrame(animate);
-}
-
-spinBtn.addEventListener('click', spinWheel);
-
-editPrizes.addEventListener('click', () => {
-  prizeText.value = prizes.join('\n');
-  prizeDialog.showModal();
-});
-
-savePrizes.addEventListener('click', (e) => {
-  const next = prizeText.value
-    .split('\n')
-    .map(x => x.trim())
-    .filter(Boolean)
-    .slice(0, 24);
-
-  if (next.length < 2) {
-    e.preventDefault();
-    alert('Il faut au moins 2 lots.');
-    return;
-  }
-
-  prizes = next;
-  localStorage.setItem('zigobox_prizes', JSON.stringify(prizes));
-  angle = 0;
-  drawWheel();
-});
-
-loadSavedFace();
+spinBtn.onclick=spinWheel;
+editBtn.onclick=()=>{prizesInput.value=prizes.join('\n');dialog.showModal()};
+cancelEdit.onclick=()=>dialog.close();
+saveEdit.onclick=()=>{const p=prizesInput.value.split('\n').map(x=>x.trim()).filter(Boolean);if(p.length<2){alert('Il faut au moins 2 lots.');return}prizes=p.slice(0,24);localStorage.setItem('zigobox_prizes_v2',JSON.stringify(prizes));angle=0;drawWheel();dialog.close()};
 drawWheel();
-initHuman().catch(err => {
-  console.error(err);
-  setStatus('Erreur de chargement IA', 'warn');
-});
+initHuman();
