@@ -1,33 +1,34 @@
-# Suivi des agents — Tableau de bord
+# Suivi des agents — Version connectée
 
-Nouveau site GitHub Pages indépendant, pensé comme écran de supervision en une seule page.
+Cette version est prévue pour fonctionner avec :
+https://zigobox.github.io/service-Technique-2/
+
+Elle lit automatiquement les données partagées par le site Pilotage via :
+- `BroadcastChannel`
+- `localStorage`
+- `zigobox_pilotage_event`
+- `zigobox_pilotage_log`
+- `zigobox_pilotage_inbox`
 
 ## URL conseillée
-Crée un dépôt GitHub nommé :
+Crée un dépôt GitHub :
 `suivi-agents`
 
-L'URL sera :
-`https://zigobox.github.io/suivi-agents/`
+URL :
+https://zigobox.github.io/suivi-agents/
 
-## Installation
-Dépose à la racine du dépôt :
-- index.html
-- style.css
-- dashboard.js
+## Important
+Les deux sites doivent rester sous le même domaine :
+`https://zigobox.github.io/...`
 
-Puis active GitHub Pages : Settings → Pages → Deploy from a branch → main / root.
+La connexion est alors automatique dans le même navigateur.
 
-## Fonctionnalités
-- présence des agents ;
-- statuts Présent / En intervention / Absent ;
-- ajout d'agents ;
-- mémorisation locale des agents ;
-- demandes à traiter, urgentes, en cours, terminées et en retard ;
-- activité sur 7 jours ;
-- planning du jour ;
+## Ce qui remonte automatiquement
+- dernier événement ;
 - alertes ;
-- suivi des actions ;
-- indicateurs clés ;
-- bouton vers Pilotage Service Technique.
+- demandes d'intervention ;
+- incidents résolus ;
+- messages INFO ;
+- compteurs du tableau de bord.
 
-La page reprend aussi le dernier événement `zigobox_pilotage_event` du site Pilotage lorsqu'il est disponible dans le même navigateur.
+La présence des agents est mémorisée localement dans le tableau de bord.
