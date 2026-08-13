@@ -1,10 +1,11 @@
-# Dashboard — présence en temps réel
+# Dashboard — agenda immédiat
 
-- Nom et prénom des agents affichés.
-- Avant la prise de service : « Absent — prend à HH:MM ».
-- Pendant le service : « Présent ».
-- Après la fin : « Absent — service terminé ».
-- Congé, RTT, maladie, etc. : le motif réel prime.
-- Repos : « Repos ».
-- Planning du jour : uniquement agenda, réunions et interventions.
-- Données synchronisées toutes les 5 secondes.
+Correction du planning du jour :
+
+- `personalEvents` (Agenda personnel) est bien lu.
+- La base locale `pilotage-service-technique-v25` est prioritaire sur le même navigateur.
+- Un événement ajouté dans Pilotage est donc visible immédiatement dans le dashboard, sans attendre Supabase.
+- Supabase est toujours interrogé toutes les 5 secondes pour la synchronisation distante.
+- L'iframe Pilotage permet au cloud de remettre à jour la base locale si nécessaire.
+- Le planning d'aujourd'hui n'est plus limité à 12 lignes : tous les événements du jour sont affichés.
+- Planning du jour = meetings + personalEvents + interventions maintenance datées ou échues aujourd'hui.

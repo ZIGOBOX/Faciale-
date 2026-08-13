@@ -37,7 +37,7 @@ function recordDueDate(record){
 let cloudDb=null,cloudUpdatedAt='',supabaseClient=null,syncBusy=false;
 
 function localDb(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
-function db(){return cloudDb||localDb()}
+function db(){return localDb()||cloudDb}
 
 async function ensureCloudClient(){
   if(supabaseClient)return supabaseClient;
@@ -216,7 +216,7 @@ function planningForDay(data,date=todayISO()){
 function renderPlanning(data){
   const p=planningForDay(data);
   $('planningCount').textContent=p.length;
-  $('todayPlanning').innerHTML=p.length?p.slice(0,12).map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="empty">Aucun élément au planning aujourd’hui</div>';
+  $('todayPlanning').innerHTML=p.length?p.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="empty">Aucun élément au planning aujourd’hui</div>';
 }
 function renderUrgencies(data){
   const urgent=collectUrgentDashboardActions(data).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
@@ -267,10 +267,14 @@ async function sync(){
   if(syncBusy)return;syncBusy=true;
   try{
     setState('Synchronisation…');
-    const data=await fetchCloudDb();
+    await fetchCloudDb();
+    // Priorité à la base locale : Pilotage l'écrit immédiatement à chaque sauvegarde.
+    // L'iframe Pilotage recharge également la copie cloud dans cette même base locale.
+    const data=localDb()||cloudDb;
+    if(!data)throw new Error('Aucune donnée Pilotage disponible');
     renderAll(data);
     const ts=cloudUpdatedAt?new Date(cloudUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):new Date().toLocaleTimeString('fr-FR');
-    $('lastSync').textContent=`Serveur Pilotage lu à ${ts}`;
+    $('lastSync').textContent=`Base locale immédiate • cloud vérifié à ${ts}`;
     setState('Connecté au Pilotage ✓',true);
   }catch(e){
     console.error(e);const data=localDb();
@@ -278,6 +282,18 @@ async function sync(){
     else{$('lastSync').textContent=e.message||String(e);setState('Données indisponibles')}
   }finally{syncBusy=false}
 }
+
+
+window.addEventListener('storage',e=>{
+  if(e.key===STORAGE_KEY){
+    const data=localDb();
+    if(data){
+      renderAll(data);
+      setState('Connecté au Pilotage ✓',true);
+      if($('lastSync'))$('lastSync').textContent=`Mise à jour locale immédiate à ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+    }
+  }
+});
 
 $('refresh').onclick=sync;
 $('refreshTop').onclick=sync;
@@ -288,3 +304,11 @@ setInterval(sync,5000);
 sync();
 
 setInterval(()=>{const data=db();if(data){renderKpis(data);renderAgentNow(data)}},60000);
+
+const pilotageFrame=document.getElementById('pilotageSource');
+if(pilotageFrame){
+  pilotageFrame.addEventListener('load',()=>{
+    setTimeout(()=>{const data=localDb();if(data)renderAll(data)},1200);
+    setTimeout(()=>{const data=localDb();if(data)renderAll(data)},3500);
+  });
+}
