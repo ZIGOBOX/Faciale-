@@ -1,18 +1,30 @@
-# Dashboard — café / préparation salle corrigé
+# Dashboard Pilotage — V1.9.0
 
-Cause trouvée :
-Pilotage ne stocke pas « Préparation salle & café » dans `personalEvents`.
-Ces éléments sont stockés séparément dans :
-`pst_room_preps_v106`
+Build : 2026-08-13 21:21
 
-Le dashboard lit maintenant :
-- Agenda personnel (`personalEvents`)
-- Réunions / rendez-vous (`meetings`)
-- Préparation salle & café (`pst_room_preps_v106`)
-- Maintenance du jour / échéance du jour
+Cette version conserve tous les raccordements existants :
+- urgences ;
+- retards ;
+- interventions ouvertes ;
+- contrôles périodiques ;
+- conformité ménage ;
+- présence agents en temps réel ;
+- charge de travail ;
+- graphiques ;
+- synchronisation toutes les 5 secondes.
+
+Seul le bloc « Planning d'aujourd'hui » a été remplacé pour recopier la logique du vrai `eventsForDate()` de Pilotage :
+- Agenda personnel
+- Réunions / rendez-vous
+- Notes à échéance
+- Maintenance à échéance
 - Demandes direction à échéance
 - Chantiers / GPA à échéance
 - Sécurité / qualité à échéance
-- Contrôles périodiques du jour
+- Contrôles périodiques
+- Préparation salle & café (`pst_room_preps_v106`)
+- Vacances / fermetures
 
-Le pied de page indique séparément le nombre d'événements agenda et de préparations salle/café détectés aujourd'hui.
+Le module poubelles n'est pas inventé s'il n'est pas exposé au dashboard.
+
+Version visible en bas : V1.9.0

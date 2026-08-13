@@ -1,3 +1,6 @@
+const DASHBOARD_VERSION='V1.9.0';
+const DASHBOARD_BUILD='2026-08-13 21:21';
+console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
 const STORAGE_KEY='pilotage-service-technique-v25';
@@ -231,97 +234,139 @@ function renderKpis(data){
 function planningForDay(data,date=todayISO()){
   const rows=[];
 
-  // Agenda personnel + réunions / rendez-vous
-  for(const x of [...(data.meetings||[]).filter(x=>normalizeDateValue(x.date)===date),...(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===date)]){
+  // EXACTEMENT la logique de l'agenda journalier de Pilotage (eventsForDate)
+  for(const x of (data.personalEvents||[]).filter(x=>String(x.date)===String(date))){
     rows.push({
-      time:x.time||x.start||'',
+      id:x.id||'',
+      time:x.start||'',
+      icon:'📅',
+      title:x.title||'Événement',
+      sub:[x.location,x.status].filter(Boolean).join(' • '),
+      tag:'Agenda',
+      kind:isUrgentPriority(x.priority)?'bad':'warn',
+      source:'personal'
+    });
+  }
+
+  for(const x of (data.meetings||[]).filter(x=>normalizeDateValue(x.date)===date&&!isClosedStatus(x.status)&&norm(x.status)!=='annule')){
+    rows.push({
+      id:x.id||'',
+      time:x.time||'',
       icon:'📅',
       title:x.title||'Rendez-vous',
-      sub:[x.location,x.type,x.status].filter(Boolean).join(' • '),
-      tag:x.type||'Agenda',
-      kind:isUrgentPriority(x.priority)?'bad':'warn',
-      order:1
-    });
-  }
-
-  // Préparation salle & café — stockage séparé utilisé par Pilotage.
-  for(const x of roomPrepAgendaItems().filter(x=>normalizeDateValue(x.date)===date&&norm(x.status)!=='termine')){
-    rows.push({
-      time:x.time||'',
-      icon:'☕',
-      title:`${x.room||'Préparation salle'}${x.coffee?.enabled?' · Café':''}`,
-      sub:[x.status,x.coffee?.enabled?'Café demandé':''].filter(Boolean).join(' • '),
-      tag:'Salle & café',
+      sub:[x.location,x.status].filter(Boolean).join(' • '),
+      tag:'Rendez-vous',
       kind:'warn',
-      order:2
+      source:'meeting'
     });
   }
 
-  // Interventions maintenance du jour ou arrivant à échéance aujourd'hui.
-  for(const x of (data.maintenance||[]).filter(x=>normalizeDateValue(x.date)===date||recordDueDate(x)===date)){
-    if(isClosedStatus(x.status))continue;
+  for(const x of (data.notes||[]).filter(x=>normalizeDateValue(x.dueDate)===date&&!isClosedStatus(x.status))){
     rows.push({
-      time:x.time||'',
-      icon:'🔧',
-      title:x.title||x.no||'Intervention',
-      sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),
-      tag:'Intervention',
+      id:x.id||'',
+      time:'',
+      icon:'✎',
+      title:x.title||'Note à traiter',
+      sub:[x.category,x.priority,x.status].filter(Boolean).join(' • '),
+      tag:'Note',
       kind:isUrgentPriority(x.priority)?'bad':'warn',
-      order:3
+      source:'note'
     });
   }
 
-  // Demandes direction arrivant à échéance aujourd'hui.
-  for(const x of (data.requests||[]).filter(x=>recordDueDate(x)===date&&!isClosedStatus(x.status))){
+  for(const x of (data.maintenance||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status))){
     rows.push({
+      id:x.id||'',
+      time:'',
+      icon:'🔧',
+      title:`Maintenance · ${x.title||'Intervention'}`,
+      sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),
+      tag:'Maintenance',
+      kind:isUrgentPriority(x.priority)?'bad':'warn',
+      source:'maintenance'
+    });
+  }
+
+  for(const x of (data.requests||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status))){
+    rows.push({
+      id:x.id||'',
       time:'',
       icon:'↗',
       title:`Direction · ${x.title||x.description||'Demande'}`,
       sub:[x.priority,x.status].filter(Boolean).join(' • '),
       tag:'Direction',
       kind:isUrgentPriority(x.priority)?'bad':'warn',
-      order:4
+      source:'request'
     });
   }
 
-  // Chantiers / GPA à échéance aujourd'hui.
-  for(const x of (data.works||[]).filter(x=>recordDueDate(x)===date&&!isClosedStatus(x.status))){
+  for(const x of (data.works||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status))){
     rows.push({
+      id:x.id||'',
       time:'',
       icon:'🏗',
       title:`Chantier/GPA · ${x.title||'Action'}`,
       sub:[x.priority,x.status].filter(Boolean).join(' • '),
       tag:'Chantier',
       kind:isUrgentPriority(x.priority)?'bad':'warn',
-      order:5
+      source:'work'
     });
   }
 
-  // Sécurité / qualité à échéance aujourd'hui.
-  for(const x of (data.issues||[]).filter(x=>recordDueDate(x)===date&&!isClosedStatus(x.status))){
+  for(const x of (data.issues||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status))){
     rows.push({
+      id:x.id||'',
       time:'',
       icon:'⚠',
-      title:x.title||x.description||'Sécurité / qualité',
+      title:`${norm(x.priority)==='urgente'?'⚠️ ':''}${x.title||x.description||'Sécurité / qualité'}`,
       sub:[x.priority,x.status].filter(Boolean).join(' • '),
       tag:'Sécurité',
       kind:isUrgentPriority(x.priority)?'bad':'warn',
-      order:6
+      source:'issue'
     });
   }
 
-  // Contrôles périodiques prévus aujourd'hui.
-  for(const x of (data.periodic||[]).filter(x=>periodicDue(x)===date)){
+  for(const x of (data.periodic||[]).filter(x=>normalizeDateValue(periodicDue(x))===date)){
     rows.push({
+      id:x.id||'',
       time:'',
       icon:'🛡',
       title:`Contrôle périodique · ${x.name||x.title||x.family||'Contrôle'}`,
       sub:[x.family,x.status].filter(Boolean).join(' • '),
       tag:'Contrôle',
       kind:'warn',
-      order:7
+      source:'periodic'
     });
   }
+
+  for(const x of roomPrepAgendaItems().filter(x=>normalizeDateValue(x.date)===date&&norm(x.status)!=='termine')){
+    rows.push({
+      id:x.id||'',
+      time:x.time||'',
+      icon:'☕',
+      title:`☕ ${x.room||'Préparation salle'}${x.coffee?.enabled?' · Café':''}`,
+      sub:[x.status,x.coffee?.enabled?'Café activé':''].filter(Boolean).join(' • '),
+      tag:'Salle & café',
+      kind:'warn',
+      source:'roomprep'
+    });
+  }
+
+  for(const x of (data.vacations||[]).filter(x=>normalizeDateValue(x.start)===date&&norm(x.status)!=='cloturee')){
+    rows.push({
+      id:x.id||'',
+      time:'',
+      icon:'🏖',
+      title:`Vacances / fermeture · ${x.name||'Période'}`,
+      sub:x.status||'',
+      tag:'Vacances',
+      kind:'warn',
+      source:'vacation'
+    });
+  }
+
+  // L'élément poubelles dépend d'un module externe dans Pilotage.
+  // S'il n'est pas exposé au dashboard, on ne l'invente pas ici.
 
   return rows.sort((a,b)=>`${a.time||'99:99'}${a.title||''}`.localeCompare(`${b.time||'99:99'}${b.title||''}`));
 }
@@ -388,7 +433,7 @@ async function sync(){
     const todayPersonal=(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===todayISO()).length;
     const todayCoffee=roomPrepAgendaItems().filter(x=>normalizeDateValue(x.date)===todayISO()&&norm(x.status)!=='termine').length;
     const ts=cloudUpdatedAt?new Date(cloudUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):new Date().toLocaleTimeString('fr-FR');
-    $('lastSync').textContent=`Agenda : ${todayPersonal} événement(s) + ${todayCoffee} préparation(s) salle/café aujourd’hui • cloud ${ts}`;
+    $('lastSync').textContent=`Planning exact : ${planningForDay(data).length} élément(s) aujourd’hui • dont ${todayCoffee} salle/café • cloud ${ts}`;
     setState('Connecté au Pilotage ✓',true);
   }catch(e){
     console.error(e);const data=mergePilotageData(localDb(),cloudDb);
