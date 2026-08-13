@@ -21,7 +21,7 @@
     <span id="lastUpdate">Mise à jour : --:--</span>
   </div>
   <div class="top-actions">
-    <span id="state" class="state">Connexion…</span>
+    <span id="state" class="state">Connexion aux données…</span>
     <button id="refreshTop" class="refresh-btn">↻ Actualiser</button>
     <a class="pilotage-btn" href="/service-Technique-2/" target="_blank">Ouvrir Pilotage ↗</a>
   </div>
@@ -135,6 +135,8 @@
 </main>
 
 <iframe id="pilotageSource" src="/service-Technique-2/" title="Source Pilotage Service Technique"></iframe>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/service-Technique-2/supabase-config.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

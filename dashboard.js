@@ -11,9 +11,90 @@ const name=a=>a?`${a.firstName||''} ${a.lastName||''}`.trim():'Équipe';
 const initials=n=>String(n||'?').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
 const due=r=>String(r?.dueDate||r?.deadline||r?.echeance||r?.endDate||r?.targetDate||r?.dateLimite||r?.date_limit||'').slice(0,10);
 
-function db(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}}
+let cloudDb=null;
+let cloudUpdatedAt='';
+let supabaseClient=null;
+let syncBusy=false;
+
+function localDb(){
+  try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}
+}
+function db(){return cloudDb||localDb()}
 function item(title,sub='',tag='',kind=''){return `<div class="row"><div class="avatar">${initials(title)}</div><div><b>${esc(title)}</b><small>${esc(sub)}</small></div>${tag?`<span class="tag ${kind}">${esc(tag)}</span>`:''}</div>`}
 function setList(id,rows,msg='Aucune donnée'){ const el=$(id); if(!el)return; el.innerHTML=rows.length?rows.join(''):`<div class="empty">${msg}</div>`}
+
+
+async function ensureCloudClient(){
+  if(supabaseClient)return supabaseClient;
+  const cfg=window.SUPABASE_CONFIG||{};
+  if(!window.supabase)throw new Error('Module Supabase non chargé');
+  if(!cfg.url||!cfg.publishableKey)throw new Error('Configuration Supabase non chargée');
+  supabaseClient=window.supabase.createClient(cfg.url,cfg.publishableKey);
+  return supabaseClient;
+}
+
+async function fetchCloudDb(){
+  const client=await ensureCloudClient();
+  const {data:authData,error:authError}=await client.auth.getSession();
+  if(authError)throw authError;
+  const session=authData?.session;
+  if(!session?.user?.id)throw new Error('Session Pilotage absente — ouvrez Pilotage et connectez-vous');
+  const {data,error}=await client
+    .from('app_state')
+    .select('data,updated_at')
+    .eq('user_id',session.user.id)
+    .maybeSingle();
+  if(error)throw error;
+  if(!data?.data)throw new Error('Aucune donnée Pilotage trouvée sur le serveur');
+  cloudDb=data.data;
+  cloudUpdatedAt=data.updated_at||'';
+  return cloudDb;
+}
+
+function setConnectionState(text,ok=false){
+  const el=$('state');
+  if(!el)return;
+  el.textContent=text;
+  el.className=ok?'state ok':'state';
+}
+
+async function syncCloudAndRender(){
+  if(syncBusy)return;
+  syncBusy=true;
+  try{
+    setConnectionState('Synchronisation…',false);
+    const data=await fetchCloudDb();
+    renderLists(data);
+    renderVisuals(data);
+
+    // L'iframe garde un rôle secondaire : si elle a fini de charger,
+    // on récupère les KPI déjà calculés par l'application officielle.
+    copyKpisFromPilotage();
+
+    const serverTime=cloudUpdatedAt
+      ? new Date(cloudUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+      : new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    setConnectionState('Connecté au Pilotage ✓',true);
+    if($('lastSync'))$('lastSync').textContent=`Serveur lu à ${serverTime}`;
+    if($('lastUpdate'))$('lastUpdate').textContent=`Mise à jour : ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
+  }catch(error){
+    console.error('Synchronisation dashboard :',error);
+    const local=localDb();
+    if(local){
+      cloudDb=null;
+      renderLists(local);
+      renderVisuals(local);
+      copyKpisFromPilotage();
+      setConnectionState('Mode local • serveur indisponible',false);
+      if($('lastSync'))$('lastSync').textContent=`Données locales • ${error?.message||error}`;
+    }else{
+      setConnectionState('Données indisponibles',false);
+      if($('lastSync'))$('lastSync').textContent=error?.message||String(error);
+    }
+  }finally{
+    syncBusy=false;
+  }
+}
 
 function copyKpisFromPilotage(){
  try{
@@ -147,21 +228,40 @@ function renderVisuals(data){
 }
 
 function refresh(){
- const data=db();
- if(!data){$('state').textContent='Base Pilotage non trouvée';$('state').className='';return}
- renderLists(data);
- renderVisuals(data);
- const exact=copyKpisFromPilotage();
- $('state').textContent=exact?'Connecté • données exactes ✓':'Connecté • chargement des compteurs…';
- $('state').className=exact?'ok':'';
- $('lastSync').textContent=`Dernière lecture : ${new Date().toLocaleTimeString('fr-FR')} • Version base ${data.version||'—'}`;
+  return syncCloudAndRender();
 }
-$('pilotageSource').addEventListener('load',()=>{setTimeout(refresh,1200);setTimeout(refresh,3500);setTimeout(refresh,7000)});
-window.addEventListener('storage',e=>{if(e.key===KEY)refresh()});
-window.addEventListener('message',refresh);
-$('refresh').onclick=refresh;
-setInterval(refresh,5000);
-setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})},1000);
-refresh();
 
-$('refreshTop').addEventListener('click',refresh);window.addEventListener('resize',()=>{const data=db();if(data){renderMainChart(data);renderSparks(data)}});
+
+$('pilotageSource').addEventListener('load',()=>{
+  // L'iframe n'est plus la source principale, mais permet de recopier
+  // les KPI exacts calculés par l'application si elle est déjà authentifiée.
+  setTimeout(copyKpisFromPilotage,1500);
+  setTimeout(copyKpisFromPilotage,4000);
+});
+
+window.addEventListener('storage',e=>{
+  if(e.key===KEY && !syncBusy){
+    const local=localDb();
+    if(!cloudDb && local){renderLists(local);renderVisuals(local)}
+  }
+});
+
+$('refresh').onclick=syncCloudAndRender;
+if($('refreshTop'))$('refreshTop').onclick=syncCloudAndRender;
+
+setInterval(()=>{
+  if($('clock'))$('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+},1000);
+
+// Source de vérité : Supabase toutes les 5 secondes.
+setInterval(syncCloudAndRender,5000);
+
+window.addEventListener('online',syncCloudAndRender);
+window.addEventListener('focus',syncCloudAndRender);
+window.addEventListener('resize',()=>{
+  const data=db();
+  if(data){renderMainChart(data);renderSparks(data)}
+});
+
+// Premier chargement immédiat.
+syncCloudAndRender();
