@@ -1,40 +1,33 @@
-# ZiGoBox — Liaison Pilotage Service Technique
+# Suivi des agents — Tableau de bord
 
-Ce ZIP contient deux parties.
+Nouveau site GitHub Pages indépendant, pensé comme écran de supervision en une seule page.
 
-## 1. Nouveau GitHub
-Les fichiers :
-- `index.html`
-- `style.css`
-- `bridge.js`
+## URL conseillée
+Crée un dépôt GitHub nommé :
+`suivi-agents`
 
-peuvent être placés dans un nouveau dépôt GitHub Pages, par exemple :
-`Pilotage-Remote`
+L'URL sera :
+`https://zigobox.github.io/suivi-agents/`
 
-La page permet d'envoyer :
-- un message ;
-- une alerte technique ;
-- une demande d'intervention ;
-- un statut incident résolu.
+## Installation
+Dépose à la racine du dépôt :
+- index.html
+- style.css
+- dashboard.js
 
-## 2. Connexion à ton Pilotage Service Technique actuel
-Copie `pilotage-connector.js` dans le dépôt :
-`service-Technique-2`
+Puis active GitHub Pages : Settings → Pages → Deploy from a branch → main / root.
 
-Puis ajoute juste avant `</body>` dans le `index.html` de ce dépôt :
+## Fonctionnalités
+- présence des agents ;
+- statuts Présent / En intervention / Absent ;
+- ajout d'agents ;
+- mémorisation locale des agents ;
+- demandes à traiter, urgentes, en cours, terminées et en retard ;
+- activité sur 7 jours ;
+- planning du jour ;
+- alertes ;
+- suivi des actions ;
+- indicateurs clés ;
+- bouton vers Pilotage Service Technique.
 
-```html
-<script src="pilotage-connector.js"></script>
-```
-
-## Fonctionnement
-Les deux pages étant sous `https://zigobox.github.io`, elles ont le même domaine navigateur.
-Le système utilise :
-- `BroadcastChannel` pour les échanges instantanés lorsque les deux pages sont ouvertes ;
-- `localStorage` comme mémoire partagée et pour conserver le dernier message.
-
-Aucun serveur ni base de données n'est nécessaire pour cette première version.
-
-## Important
-Cette communication est locale au navigateur/appareil utilisé.
-Pour envoyer des informations d'un téléphone vers un PC différent, il faudra une base distante (par exemple Supabase ou Firebase).
+La page reprend aussi le dernier événement `zigobox_pilotage_event` du site Pilotage lorsqu'il est disponible dans le même navigateur.
