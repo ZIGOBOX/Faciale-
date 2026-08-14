@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.9.5';
-const DASHBOARD_BUILD='2026-08-14 08:54';
+const DASHBOARD_VERSION='V1.10.0';
+const DASHBOARD_BUILD='2026-08-14 11:58';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -39,13 +39,25 @@ function recordDueDate(record){
 
 let cloudDb=null,cloudUpdatedAt='',supabaseClient=null,syncBusy=false;
 
-function localDb(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
+const V128_PENDING_KEY='pst_offline_pending_v128';
+const V128_MIRROR_KEY='pst_offline_mirror_v128';
+const LEGACY_STORAGE_KEY='pilotage-service-technique-v25';
+
+function readLocalJson(key){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):null}catch(_){return null}}
+function legacyDb(){return readLocalJson(LEGACY_STORAGE_KEY)}
+function v128PendingDb(){const x=readLocalJson(V128_PENDING_KEY);return x?.data||null}
+function v128MirrorDb(){const x=readLocalJson(V128_MIRROR_KEY);return x?.data||null}
+function livePilotageDb(){
+  try{
+    const frame=document.getElementById('pilotageSource');
+    const state=frame?.contentWindow?.PSTMainState?.get?.();
+    return state&&typeof state==='object'?state:null;
+  }catch(_){return null}
+}
 
 function mergeRows(cloudRows=[],localRows=[]){
   const map=new Map();
   for(const x of (cloudRows||[]))if(x&&x.id!=null)map.set(String(x.id),x);
-  // Les nouveaux éléments locaux absents du cloud sont ajoutés immédiatement.
-  // Pour un même ID, la version locale est privilégiée car Pilotage l'écrit avant l'envoi cloud.
   for(const x of (localRows||[]))if(x&&x.id!=null)map.set(String(x.id),x);
   return [...map.values()];
 }
@@ -55,19 +67,38 @@ function mergePilotageData(local,cloud){
   const out={...cloud,...local};
   const arrayKeys=[
     'agents','weeklyPlans','rotations','rotationExceptions','agentDays',
-    'personalEvents','issues','periodic','cleaning','maintenance','requests',
+    'personalEvents','roomPreps','issues','periodic','cleaning','maintenance','requests',
     'works','meetings','notes','vacations','documents','contacts',
-    'reportNonconformities'
+    'reportNonconformities','attachments','archives','importArchives'
   ];
   for(const k of arrayKeys)out[k]=mergeRows(cloud[k]||[],local[k]||[]);
   return out;
 }
-function db(){return mergePilotageData(localDb(),cloudDb)}
+function bestPilotageDb(){
+  // 1) état vivant V128 dans l'iframe : source la plus immédiate
+  const live=livePilotageDb();
+  if(live)return live;
+  // 2) modifications hors ligne en attente
+  const pending=v128PendingDb();
+  if(pending)return mergePilotageData(pending,cloudDb);
+  // 3) miroir V128 écrit par Pilotage
+  const mirror=v128MirrorDb();
+  if(mirror)return mergePilotageData(mirror,cloudDb);
+  // 4) ancienne base locale pour compatibilité
+  const legacy=legacyDb();
+  if(legacy)return mergePilotageData(legacy,cloudDb);
+  // 5) cloud
+  return cloudDb;
+}
+function localDb(){return v128PendingDb()||v128MirrorDb()||legacyDb()}
+function db(){return bestPilotageDb()}
 
-function roomPrepAgendaItems(){
+function roomPrepAgendaItems(data=db()){
+  // V128 : les préparations salle/café sont dans db.roomPreps.
+  if(Array.isArray(data?.roomPreps))return data.roomPreps;
+  // Compatibilité anciennes versions seulement.
   try{return JSON.parse(localStorage.getItem('pst_room_preps_v106')||'[]')||[]}catch(_){return[]}
 }
-
 
 async function ensureCloudClient(){
   if(supabaseClient)return supabaseClient;
@@ -274,147 +305,55 @@ function wasteAgendaItemForDateDashboard(date){
   }
 }
 
+function liveEventsForDate(date){
+  try{
+    const frame=document.getElementById('pilotageSource');
+    const fn=frame?.contentWindow?.eventsForDate;
+    if(typeof fn!=='function')return null;
+    const rows=fn(date);
+    return Array.isArray(rows)?rows:null;
+  }catch(_){return null}
+}
+
 function planningForDay(data,date=todayISO()){
+  const liveRows=liveEventsForDate(date);
   const rows=[];
 
-  // EXACTEMENT la logique de l'agenda journalier de Pilotage (eventsForDate)
-  for(const x of (data.personalEvents||[]).filter(x=>String(x.date)===String(date))){
-    rows.push({
-      id:x.id||'',
-      time:x.start||'',
-      icon:'📅',
-      title:x.title||'Événement',
-      sub:[x.location,x.status].filter(Boolean).join(' • '),
-      tag:'Agenda',
-      kind:isUrgentPriority(x.priority)?'bad':'warn',
-      source:'personal'
-    });
+  if(liveRows){
+    // Copie directe du planning V128. On retire seulement l'élément poubelles,
+    // car le dashboard l'affiche volontairement la veille selon ton choix.
+    for(const x of liveRows.filter(x=>x.source!=='waste')){
+      const source=x.source||'personal';
+      const meta=x.meta||[x.location,x.status].filter(Boolean).join(' • ');
+      let icon='📅',tag='Agenda',kind='warn';
+      if(source==='meeting'){icon='📅';tag='Rendez-vous'}
+      else if(source==='note'){icon='✎';tag='Note';kind=isUrgentPriority(x.priority)?'bad':'warn'}
+      else if(source==='maintenance'){icon='🔧';tag='Maintenance';kind=isUrgentPriority(x.priority)?'bad':'warn'}
+      else if(source==='request'){icon='↗';tag='Direction';kind=isUrgentPriority(x.priority)?'bad':'warn'}
+      else if(source==='work'){icon='🏗';tag='Chantier';kind=isUrgentPriority(x.priority)?'bad':'warn'}
+      else if(source==='issue'){icon='⚠';tag='Sécurité';kind=isUrgentPriority(x.priority)?'bad':'warn'}
+      else if(source==='periodic'){icon='🛡';tag='Contrôle'}
+      else if(source==='roomprep'){icon='☕';tag='Salle & café'}
+      else if(source==='vacation'){icon='🏖';tag='Vacances'}
+      rows.push({id:x.id||'',time:x.start||x.time||'',icon,title:x.title||'Événement',sub:meta,tag,kind,source});
+    }
+  }else{
+    // Secours si l'iframe V128 n'est pas encore prête : même structure de données.
+    for(const x of (data.personalEvents||[]).filter(x=>String(x.date)===String(date)))rows.push({id:x.id||'',time:x.start||'',icon:'📅',title:x.title||'Événement',sub:[x.location,x.status].filter(Boolean).join(' • '),tag:'Agenda',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'personal'});
+    for(const x of (data.meetings||[]).filter(x=>normalizeDateValue(x.date)===date&&!isClosedStatus(x.status)&&norm(x.status)!=='annule'))rows.push({id:x.id||'',time:x.time||'',icon:'📅',title:x.title||'Rendez-vous',sub:[x.location,x.status].filter(Boolean).join(' • '),tag:'Rendez-vous',kind:'warn',source:'meeting'});
+    for(const x of (data.notes||[]).filter(x=>normalizeDateValue(x.dueDate)===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'✎',title:x.title||'Note à traiter',sub:[x.category,x.priority,x.status].filter(Boolean).join(' • '),tag:'Note',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'note'});
+    for(const x of (data.maintenance||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'🔧',title:`Maintenance · ${x.title||'Intervention'}`,sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),tag:'Maintenance',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'maintenance'});
+    for(const x of (data.requests||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'↗',title:`Direction · ${x.title||x.description||'Demande'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Direction',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'request'});
+    for(const x of (data.works||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'🏗',title:`Chantier/GPA · ${x.title||'Action'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Chantier',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'work'});
+    for(const x of (data.issues||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'⚠',title:`${norm(x.priority)==='urgente'?'⚠️ ':''}${x.title||x.description||'Sécurité / qualité'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Sécurité',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'issue'});
+    for(const x of (data.periodic||[]).filter(x=>normalizeDateValue(periodicDue(x))===date))rows.push({id:x.id||'',time:'',icon:'🛡',title:`Contrôle périodique · ${x.name||x.title||x.family||'Contrôle'}`,sub:[x.family,x.status].filter(Boolean).join(' • '),tag:'Contrôle',kind:'warn',source:'periodic'});
+    for(const x of roomPrepAgendaItems(data).filter(x=>normalizeDateValue(x.date)===date&&norm(x.status)!=='termine'))rows.push({id:x.id||'',time:x.time||'',icon:'☕',title:`☕ ${x.room||'Préparation salle'}${x.coffee?.enabled?' · Café':''}`,sub:[x.status,x.coffee?.enabled?'Café activé':''].filter(Boolean).join(' • '),tag:'Salle & café',kind:'warn',source:'roomprep'});
+    for(const x of (data.vacations||[]).filter(x=>normalizeDateValue(x.start)===date&&norm(x.status)!=='cloturee'))rows.push({id:x.id||'',time:'',icon:'🏖',title:`Vacances / fermeture · ${x.name||'Période'}`,sub:x.status||'',tag:'Vacances',kind:'warn',source:'vacation'});
   }
 
-  for(const x of (data.meetings||[]).filter(x=>normalizeDateValue(x.date)===date&&!isClosedStatus(x.status)&&norm(x.status)!=='annule')){
-    rows.push({
-      id:x.id||'',
-      time:x.time||'',
-      icon:'📅',
-      title:x.title||'Rendez-vous',
-      sub:[x.location,x.status].filter(Boolean).join(' • '),
-      tag:'Rendez-vous',
-      kind:'warn',
-      source:'meeting'
-    });
-  }
-
-  for(const x of (data.notes||[]).filter(x=>normalizeDateValue(x.dueDate)===date&&!isClosedStatus(x.status))){
-    rows.push({
-      id:x.id||'',
-      time:'',
-      icon:'✎',
-      title:x.title||'Note à traiter',
-      sub:[x.category,x.priority,x.status].filter(Boolean).join(' • '),
-      tag:'Note',
-      kind:isUrgentPriority(x.priority)?'bad':'warn',
-      source:'note'
-    });
-  }
-
-  for(const x of (data.maintenance||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status))){
-    rows.push({
-      id:x.id||'',
-      time:'',
-      icon:'🔧',
-      title:`Maintenance · ${x.title||'Intervention'}`,
-      sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),
-      tag:'Maintenance',
-      kind:isUrgentPriority(x.priority)?'bad':'warn',
-      source:'maintenance'
-    });
-  }
-
-  for(const x of (data.requests||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status))){
-    rows.push({
-      id:x.id||'',
-      time:'',
-      icon:'↗',
-      title:`Direction · ${x.title||x.description||'Demande'}`,
-      sub:[x.priority,x.status].filter(Boolean).join(' • '),
-      tag:'Direction',
-      kind:isUrgentPriority(x.priority)?'bad':'warn',
-      source:'request'
-    });
-  }
-
-  for(const x of (data.works||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status))){
-    rows.push({
-      id:x.id||'',
-      time:'',
-      icon:'🏗',
-      title:`Chantier/GPA · ${x.title||'Action'}`,
-      sub:[x.priority,x.status].filter(Boolean).join(' • '),
-      tag:'Chantier',
-      kind:isUrgentPriority(x.priority)?'bad':'warn',
-      source:'work'
-    });
-  }
-
-  for(const x of (data.issues||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status))){
-    rows.push({
-      id:x.id||'',
-      time:'',
-      icon:'⚠',
-      title:`${norm(x.priority)==='urgente'?'⚠️ ':''}${x.title||x.description||'Sécurité / qualité'}`,
-      sub:[x.priority,x.status].filter(Boolean).join(' • '),
-      tag:'Sécurité',
-      kind:isUrgentPriority(x.priority)?'bad':'warn',
-      source:'issue'
-    });
-  }
-
-  for(const x of (data.periodic||[]).filter(x=>normalizeDateValue(periodicDue(x))===date)){
-    rows.push({
-      id:x.id||'',
-      time:'',
-      icon:'🛡',
-      title:`Contrôle périodique · ${x.name||x.title||x.family||'Contrôle'}`,
-      sub:[x.family,x.status].filter(Boolean).join(' • '),
-      tag:'Contrôle',
-      kind:'warn',
-      source:'periodic'
-    });
-  }
-
-  for(const x of roomPrepAgendaItems().filter(x=>normalizeDateValue(x.date)===date&&norm(x.status)!=='termine')){
-    rows.push({
-      id:x.id||'',
-      time:x.time||'',
-      icon:'☕',
-      title:`☕ ${x.room||'Préparation salle'}${x.coffee?.enabled?' · Café':''}`,
-      sub:[x.status,x.coffee?.enabled?'Café activé':''].filter(Boolean).join(' • '),
-      tag:'Salle & café',
-      kind:'warn',
-      source:'roomprep'
-    });
-  }
-
-  for(const x of (data.vacations||[]).filter(x=>normalizeDateValue(x.start)===date&&norm(x.status)!=='cloturee')){
-    rows.push({
-      id:x.id||'',
-      time:'',
-      icon:'🏖',
-      title:`Vacances / fermeture · ${x.name||'Période'}`,
-      sub:x.status||'',
-      tag:'Vacances',
-      kind:'warn',
-      source:'vacation'
-    });
-  }
-
-  // L'élément poubelles dépend d'un module externe dans Pilotage.
-  // S'il n'est pas exposé au dashboard, on ne l'invente pas ici.
-
-  // Passage des poubelles : même calcul que le planning officiel de Pilotage.
+  // Choix personnalisé conservé : rappel poubelles la veille du passage.
   const waste=wasteAgendaItemForDateDashboard(date);
   if(waste)rows.push(waste);
-
   return rows.sort((a,b)=>`${a.time||'99:99'}${a.title||''}`.localeCompare(`${b.time||'99:99'}${b.title||''}`));
 }
 function renderPlanning(data){
@@ -531,11 +470,11 @@ async function sync(){
     await fetchCloudDb();
     // Fusion locale + cloud : un nouvel élément existe parfois d'abord en local,
     // tandis qu'un autre appareil peut avoir déjà envoyé une donnée plus récente au cloud.
-    const data=mergePilotageData(localDb(),cloudDb);
+    const data=bestPilotageDb();
     if(!data)throw new Error('Aucune donnée Pilotage disponible');
     renderAll(data);
     const todayPersonal=(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===todayISO()).length;
-    const todayCoffee=roomPrepAgendaItems().filter(x=>normalizeDateValue(x.date)===todayISO()&&norm(x.status)!=='termine').length;
+    const todayCoffee=roomPrepAgendaItems(data).filter(x=>normalizeDateValue(x.date)===todayISO()&&norm(x.status)!=='termine').length;
     const ts=cloudUpdatedAt?new Date(cloudUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):new Date().toLocaleTimeString('fr-FR');
     $('lastSync').textContent=`Planning exact : ${planningForDay(data).length} élément(s) aujourd’hui • dont ${todayCoffee} salle/café • cloud ${ts}`;
     setState('Connecté au Pilotage ✓',true);
@@ -548,7 +487,7 @@ async function sync(){
 
 
 window.addEventListener('storage',e=>{
-  if(e.key===STORAGE_KEY||e.key==='pst_room_preps_v106'){
+  if([LEGACY_STORAGE_KEY,V128_PENDING_KEY,V128_MIRROR_KEY,'pst_room_preps_v106'].includes(e.key)){
     const data=localDb();
     if(data){
       renderAll(data);
@@ -564,6 +503,9 @@ window.addEventListener('focus',sync);
 window.addEventListener('online',sync);
 window.addEventListener('resize',()=>{const data=db();if(data)renderCharts(data)});
 setInterval(sync,5000);
+
+// V128 : lecture directe de l'état vivant pour refléter immédiatement les nouvelles saisies.
+setInterval(()=>{const data=bestPilotageDb();if(data)renderAll(data)},1000);
 sync();
 
 setInterval(()=>{const data=db();if(data){renderKpis(data);renderAgentNow(data)}},60000);
@@ -571,9 +513,9 @@ setInterval(()=>{const data=db();if(data){renderKpis(data);renderAgentNow(data)}
 const pilotageFrame=document.getElementById('pilotageSource');
 if(pilotageFrame){
   pilotageFrame.addEventListener('load',()=>{
-    setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},800);
-    setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},1800);
-    setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},3500);
+    setTimeout(()=>{const data=bestPilotageDb();if(data)renderAll(data)},800);
+    setTimeout(()=>{const data=bestPilotageDb();if(data)renderAll(data)},1800);
+    setTimeout(()=>{const data=bestPilotageDb();if(data)renderAll(data)},3500);
   });
 }
 
