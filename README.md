@@ -1,19 +1,13 @@
-# Dashboard Pilotage — V1.9.3
+# Dashboard Pilotage — V1.9.5
 
-Build : 2026-08-13 21:48
+Build : 2026-08-14 08:54
 
-Basé sur la V1.9.2.
+Base : V1.9.4.
 
-Nouvelle boîte à liens personnalisés :
-- nombre de liens non limité ;
-- nom personnalisé ;
-- URL personnalisée ;
-- logo/image importé depuis le PC ;
-- logo de secours généré avec les initiales si aucune image ;
-- modification ;
-- suppression ;
-- déplacement vers le haut / bas ;
-- ouverture dans un nouvel onglet ;
-- mémorisation dans le navigateur.
+Modification unique :
+- le rappel poubelles apparaît désormais la veille du passage réel ;
+- collecte vendredi -> rappel jeudi ;
+- collecte décalée samedi -> rappel vendredi ;
+- libellé : « Sortir [bac] » + « Passage demain ».
 
-Tous les raccordements et fonctions de la V1.9.2 sont conservés.
+Tout le reste de la V1.9.4 est conservé sans changement.

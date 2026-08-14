@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.9.3';
-const DASHBOARD_BUILD='2026-08-13 21:48';
+const DASHBOARD_VERSION='V1.9.5';
+const DASHBOARD_BUILD='2026-08-14 08:54';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -231,6 +231,49 @@ function renderKpis(data){
   $('presencePct').textContent=pct+'%';$('present').textContent=`${livePresent} présents maintenant`;
   $('presenceRing').style.background=`conic-gradient(#22a55b 0 ${pct}%,#edf2f6 ${pct}% 100%)`;
 }
+
+function wasteAgendaItemForDateDashboard(date){
+  try{
+    const frame=document.getElementById('pilotageSource');
+    const api=frame?.contentWindow?.PSTWeatherWaste;
+    if(!api?.collectionInfo||!api?.binForDate||!api?.localISO)return null;
+
+    // Le dashboard affiche le rappel LA VEILLE du passage réel.
+    const reminderDay=parseDate(date);
+    const collectionDay=new Date(reminderDay);
+    collectionDay.setDate(collectionDay.getDate()+1);
+    const collectionISO=localISO(collectionDay);
+
+    // Le module officiel s'appuie sur le vendredi de référence.
+    const wd=collectionDay.getDay();
+    let friday=null;
+    if(wd===5)friday=new Date(collectionDay);
+    else if(wd===6){
+      friday=new Date(collectionDay);
+      friday.setDate(friday.getDate()-1);
+    }else return null;
+
+    const ci=api.collectionInfo(friday);
+    const actual=api.localISO(ci.actual);
+    if(actual!==collectionISO)return null;
+
+    const bin=api.binForDate(friday);
+    return {
+      id:`waste-reminder-${date}`,
+      time:'',
+      icon:bin.icon||'🗑️',
+      title:`${bin.icon||'🗑️'} Sortir ${bin.label||'le bac'}`,
+      sub:`Passage demain • Rue Noëlas • Rue Jean Puy${ci.shifted?' • collecte décalée':''}`,
+      tag:'Poubelles',
+      kind:'warn',
+      source:'waste'
+    };
+  }catch(e){
+    console.warn('Planning poubelles indisponible',e);
+    return null;
+  }
+}
+
 function planningForDay(data,date=todayISO()){
   const rows=[];
 
@@ -367,6 +410,10 @@ function planningForDay(data,date=todayISO()){
 
   // L'élément poubelles dépend d'un module externe dans Pilotage.
   // S'il n'est pas exposé au dashboard, on ne l'invente pas ici.
+
+  // Passage des poubelles : même calcul que le planning officiel de Pilotage.
+  const waste=wasteAgendaItemForDateDashboard(date);
+  if(waste)rows.push(waste);
 
   return rows.sort((a,b)=>`${a.time||'99:99'}${a.title||''}`.localeCompare(`${b.time||'99:99'}${b.title||''}`));
 }
@@ -524,7 +571,8 @@ setInterval(()=>{const data=db();if(data){renderKpis(data);renderAgentNow(data)}
 const pilotageFrame=document.getElementById('pilotageSource');
 if(pilotageFrame){
   pilotageFrame.addEventListener('load',()=>{
-    setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},1200);
+    setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},800);
+    setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},1800);
     setTimeout(()=>{const data=mergePilotageData(localDb(),cloudDb);if(data)renderAll(data)},3500);
   });
 }
