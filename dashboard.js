@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.10.4';
-const DASHBOARD_BUILD='2026-08-14 15:58';
+const DASHBOARD_VERSION='V1.10.5';
+const DASHBOARD_BUILD='2026-08-14 16:05';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -39,14 +39,16 @@ function recordDueDate(record){
 
 let cloudDb=null,cloudUpdatedAt='',supabaseClient=null,syncBusy=false;
 
-const V128_PENDING_KEY='pst_offline_pending_v128';
-const V128_MIRROR_KEY='pst_offline_mirror_v128';
+const V134_PENDING_KEY='pst_offline_pending_v130';
+const V134_MIRROR_KEY='pst_offline_mirror_v130';
+const OLD_V128_PENDING_KEY='pst_offline_pending_v128';
+const OLD_V128_MIRROR_KEY='pst_offline_mirror_v128';
 const LEGACY_STORAGE_KEY='pilotage-service-technique-v25';
 
 function readLocalJson(key){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):null}catch(_){return null}}
 function legacyDb(){return readLocalJson(LEGACY_STORAGE_KEY)}
-function v128PendingDb(){const x=readLocalJson(V128_PENDING_KEY);return x?.data||null}
-function v128MirrorDb(){const x=readLocalJson(V128_MIRROR_KEY);return x?.data||null}
+function v134PendingDb(){const x=readLocalJson(V134_PENDING_KEY)||readLocalJson(OLD_V128_PENDING_KEY);return x?.data||null}
+function v134MirrorDb(){const x=readLocalJson(V134_MIRROR_KEY)||readLocalJson(OLD_V128_MIRROR_KEY);return x?.data||null}
 function livePilotageDb(){
   try{
     const frame=document.getElementById('pilotageSource');
@@ -75,26 +77,23 @@ function mergePilotageData(local,cloud){
   return out;
 }
 function bestPilotageDb(){
-  // 1) état vivant V128 dans l'iframe : source la plus immédiate
+  // 1) état vivant de Pilotage V134 : toujours prioritaire.
   const live=livePilotageDb();
   if(live)return live;
-  // 2) modifications hors ligne en attente
-  const pending=v128PendingDb();
-  if(pending)return mergePilotageData(pending,cloudDb);
-  // 3) miroir V128 écrit par Pilotage
-  const mirror=v128MirrorDb();
-  if(mirror)return mergePilotageData(mirror,cloudDb);
-  // 4) ancienne base locale pour compatibilité
-  const legacy=legacyDb();
-  if(legacy)return mergePilotageData(legacy,cloudDb);
-  // 5) cloud
-  return cloudDb;
+  // 2) sauvegarde hors ligne V134/V130 en attente.
+  const pending=v134PendingDb();
+  if(pending)return pending;
+  // 3) miroir hors ligne V134/V130.
+  const mirror=v134MirrorDb();
+  if(mirror)return mirror;
+  // 4) ancienne base locale, uniquement en dernier secours.
+  return legacyDb()||cloudDb;
 }
-function localDb(){return v128PendingDb()||v128MirrorDb()||legacyDb()}
+function localDb(){return v134PendingDb()||v134MirrorDb()||legacyDb()}
 function db(){return bestPilotageDb()}
 
 function roomPrepAgendaItems(data=db()){
-  // V128 : les préparations salle/café sont dans db.roomPreps.
+  // V134 : les préparations salle/café sont dans db.roomPreps.
   if(Array.isArray(data?.roomPreps))return data.roomPreps;
   // Compatibilité anciennes versions seulement.
   try{return JSON.parse(localStorage.getItem('pst_room_preps_v106')||'[]')||[]}catch(_){return[]}
@@ -320,7 +319,7 @@ function planningForDay(data,date=todayISO()){
   const rows=[];
 
   if(liveRows){
-    // Copie directe du planning V128. On retire seulement l'élément poubelles,
+    // Copie directe du planning V134. On retire seulement l'élément poubelles,
     // car le dashboard l'affiche volontairement la veille selon ton choix.
     for(const x of liveRows.filter(x=>x.source!=='waste')){
       const source=x.source||'personal';
@@ -332,23 +331,28 @@ function planningForDay(data,date=todayISO()){
       else if(source==='request'){icon='↗';tag='Direction';kind=isUrgentPriority(x.priority)?'bad':'warn'}
       else if(source==='work'){icon='🏗';tag='Chantier';kind=isUrgentPriority(x.priority)?'bad':'warn'}
       else if(source==='issue'){icon='⚠';tag='Sécurité';kind=isUrgentPriority(x.priority)?'bad':'warn'}
+      else if(source==='cleaning'){icon='🧹';tag='Ménage'}
       else if(source==='periodic'){icon='🛡';tag='Contrôle'}
       else if(source==='roomprep'){icon='☕';tag='Salle & café'}
       else if(source==='vacation'){icon='🏖';tag='Vacances'}
       rows.push({id:x.id||'',time:x.start||x.time||'',icon,title:x.title||'Événement',sub:meta,tag,kind,source});
     }
   }else{
-    // Secours si l'iframe V128 n'est pas encore prête : même structure de données.
-    for(const x of (data.personalEvents||[]).filter(x=>String(x.date)===String(date)))rows.push({id:x.id||'',time:x.start||'',icon:'📅',title:x.title||'Événement',sub:[x.location,x.status].filter(Boolean).join(' • '),tag:'Agenda',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'personal'});
-    for(const x of (data.meetings||[]).filter(x=>normalizeDateValue(x.date)===date&&!isClosedStatus(x.status)&&norm(x.status)!=='annule'))rows.push({id:x.id||'',time:x.time||'',icon:'📅',title:x.title||'Rendez-vous',sub:[x.location,x.status].filter(Boolean).join(' • '),tag:'Rendez-vous',kind:'warn',source:'meeting'});
-    for(const x of (data.notes||[]).filter(x=>normalizeDateValue(x.dueDate)===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'✎',title:x.title||'Note à traiter',sub:[x.category,x.priority,x.status].filter(Boolean).join(' • '),tag:'Note',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'note'});
-    for(const x of (data.maintenance||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'🔧',title:`Maintenance · ${x.title||'Intervention'}`,sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),tag:'Maintenance',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'maintenance'});
-    for(const x of (data.requests||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'↗',title:`Direction · ${x.title||x.description||'Demande'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Direction',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'request'});
-    for(const x of (data.works||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'🏗',title:`Chantier/GPA · ${x.title||'Action'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Chantier',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'work'});
-    for(const x of (data.issues||[]).filter(x=>normalizeDateValue(recordDueDate(x))===date&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:'',icon:'⚠',title:`${norm(x.priority)==='urgente'?'⚠️ ':''}${x.title||x.description||'Sécurité / qualité'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Sécurité',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'issue'});
-    for(const x of (data.periodic||[]).filter(x=>normalizeDateValue(periodicDue(x))===date))rows.push({id:x.id||'',time:'',icon:'🛡',title:`Contrôle périodique · ${x.name||x.title||x.family||'Contrôle'}`,sub:[x.family,x.status].filter(Boolean).join(' • '),tag:'Contrôle',kind:'warn',source:'periodic'});
-    for(const x of roomPrepAgendaItems(data).filter(x=>normalizeDateValue(x.date)===date&&norm(x.status)!=='termine'))rows.push({id:x.id||'',time:x.time||'',icon:'☕',title:`☕ ${x.room||'Préparation salle'}${x.coffee?.enabled?' · Café':''}`,sub:[x.status,x.coffee?.enabled?'Café activé':''].filter(Boolean).join(' • '),tag:'Salle & café',kind:'warn',source:'roomprep'});
-    for(const x of (data.vacations||[]).filter(x=>normalizeDateValue(x.start)===date&&norm(x.status)!=='cloturee'))rows.push({id:x.id||'',time:'',icon:'🏖',title:`Vacances / fermeture · ${x.name||'Période'}`,sub:x.status||'',tag:'Vacances',kind:'warn',source:'vacation'});
+    // Secours V134 si l'iframe n'est pas encore prête : même logique que eventsForDate().
+    const sameDay=v=>normalizeDateValue(v)===date;
+    const active=x=>!isClosedStatus(x.status)&&norm(x.status)!=='annule';
+    const onDateOrDue=x=>sameDay(x.date)||sameDay(recordDueDate(x));
+    for(const x of (data.personalEvents||[]).filter(x=>sameDay(x.date)&&active(x)))rows.push({id:x.id||'',time:x.start||'',icon:'📅',title:x.title||'Événement',sub:[x.location,x.status].filter(Boolean).join(' • '),tag:'Agenda',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'personal'});
+    for(const x of (data.meetings||[]).filter(x=>sameDay(x.date)&&active(x)))rows.push({id:x.id||'',time:x.time||'',icon:'📅',title:x.title||'Rendez-vous',sub:[x.location,x.status].filter(Boolean).join(' • '),tag:'Rendez-vous',kind:'warn',source:'meeting'});
+    for(const x of (data.notes||[]).filter(x=>onDateOrDue(x)&&active(x)))rows.push({id:x.id||'',time:x.time||'',icon:'✎',title:`Note · ${x.title||'À traiter'}`,sub:[x.category,x.priority,x.status].filter(Boolean).join(' • '),tag:'Note',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'note'});
+    for(const x of (data.maintenance||[]).filter(x=>onDateOrDue(x)&&active(x)))rows.push({id:x.id||'',time:x.time||'',icon:'🔧',title:`Maintenance · ${x.title||'Intervention'}`,sub:[x.building,x.room,x.priority,x.status].filter(Boolean).join(' • '),tag:'Maintenance',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'maintenance'});
+    for(const x of (data.requests||[]).filter(x=>onDateOrDue(x)&&active(x)))rows.push({id:x.id||'',time:x.time||'',icon:'↗',title:`Direction · ${x.title||x.description||'Demande'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Direction',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'request'});
+    for(const x of (data.works||[]).filter(x=>onDateOrDue(x)&&active(x)))rows.push({id:x.id||'',time:x.time||'',icon:'🏗',title:`Chantier/GPA · ${x.title||'Action'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Chantier',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'work'});
+    for(const x of (data.issues||[]).filter(x=>onDateOrDue(x)&&active(x)))rows.push({id:x.id||'',time:x.time||'',icon:'⚠',title:`${norm(x.priority)==='urgente'?'⚠️ ':''}Sécurité/qualité · ${x.title||x.description||'Action'}`,sub:[x.priority,x.status].filter(Boolean).join(' • '),tag:'Sécurité',kind:isUrgentPriority(x.priority)?'bad':'warn',source:'issue'});
+    for(const x of (data.cleaning||[]).filter(x=>sameDay(x.date)))rows.push({id:x.id||'',time:x.time||'',icon:'🧹',title:`Contrôle ménage · ${x.room||x.roomType||'Zone'}`,sub:[x.building,x.floor,x.overallStatus].filter(Boolean).join(' • '),tag:'Ménage',kind:'warn',source:'cleaning'});
+    for(const x of (data.periodic||[]).filter(x=>sameDay(periodicDue(x))&&!isClosedStatus(x.status)))rows.push({id:x.id||'',time:x.time||'',icon:'🛡',title:`Contrôle périodique · ${x.name||x.title||x.family||'Contrôle'}`,sub:[x.family,x.status].filter(Boolean).join(' • '),tag:'Contrôle',kind:'warn',source:'periodic'});
+    for(const x of roomPrepAgendaItems(data).filter(x=>sameDay(x.date)&&norm(x.status)!=='termine'))rows.push({id:x.id||'',time:x.time||x.coffee?.time||'',icon:'☕',title:`Préparation salle${x.coffee?.enabled?' + café':''} · ${x.room||'Salle'}`,sub:[x.status,x.coffee?.enabled?'Café activé':''].filter(Boolean).join(' • '),tag:'Salle & café',kind:'warn',source:'roomprep'});
+    for(const x of (data.vacations||[]).filter(x=>sameDay(x.start)&&norm(x.status)!=='cloturee'))rows.push({id:x.id||'',time:'',icon:'🏖',title:`Vacances / fermeture · ${x.name||'Période'}`,sub:x.status||'',tag:'Vacances',kind:'warn',source:'vacation'});
   }
 
   // Choix personnalisé conservé : rappel poubelles la veille du passage.
@@ -406,7 +410,7 @@ function dashboardPlanningForDate(data,date){
           time:start,
           end,
           timeLabel:start?(end&&end!==start?`${start}–${end}`:start):'',
-          icon:x.source==='roomprep'?'☕':x.source==='meeting'?'📅':x.source==='maintenance'?'🔧':x.source==='periodic'?'🛡':x.source==='issue'?'⚠':x.source==='note'?'✎':'•',
+          icon:x.source==='roomprep'?'☕':x.source==='meeting'?'📅':x.source==='maintenance'?'🔧':x.source==='periodic'?'🛡':x.source==='issue'?'⚠':x.source==='cleaning'?'🧹':x.source==='note'?'✎':'•',
           title:x.title||'Événement',
           sub:x.meta||[x.location,x.status].filter(Boolean).join(' • '),
           tag:x.source||'Planning',
@@ -594,7 +598,7 @@ function renderFromPilotage(){
       return;
     }
     renderAll(data);
-    setState('Connecté au Pilotage V128 ✓',true);
+    setState('Connecté au Pilotage V134 ✓',true);
     const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     if($('lastSync'))$('lastSync').textContent=`État vivant Pilotage lu à ${now}`;
   }catch(error){
@@ -605,7 +609,7 @@ function renderFromPilotage(){
 
 function sync(){
   // Le dashboard ne synchronise PLUS lui-même avec Supabase.
-  // Pilotage V128 est l'unique moteur de synchronisation.
+  // Pilotage V134 est l'unique moteur de synchronisation.
   renderFromPilotage();
 }
 
@@ -615,7 +619,7 @@ if($('refreshTop'))$('refreshTop').onclick=renderFromPilotage;
 window.addEventListener('focus',renderFromPilotage);
 window.addEventListener('online',renderFromPilotage);
 window.addEventListener('storage',e=>{
-  if([V128_PENDING_KEY,V128_MIRROR_KEY,LEGACY_STORAGE_KEY].includes(e.key))renderFromPilotage();
+  if([V134_PENDING_KEY,V134_MIRROR_KEY,OLD_V128_PENDING_KEY,OLD_V128_MIRROR_KEY,LEGACY_STORAGE_KEY].includes(e.key))renderFromPilotage();
 });
 
 // Lecture légère de l'état vivant : aucune requête Supabase supplémentaire.
