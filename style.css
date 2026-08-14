@@ -480,3 +480,40 @@ main{max-width:1700px;margin:auto;padding:12px}
   .week-day-title{font-size:6.5px;padding:3px 5px}
   .week-day-empty{font-size:6px;padding:3px 5px}
 }
+
+/* V1.10.6 — heures visibles dans le planning, sans toucher au reste */
+.planning-event-row{
+  display:grid;
+  grid-template-columns:48px 24px 1fr auto;
+  gap:6px;
+  align-items:center;
+  padding:5px 7px;
+  border-bottom:1px solid #edf1f4
+}
+.planning-event-time{
+  font-size:9px;
+  font-weight:1000;
+  color:#174f82;
+  background:#eaf3ff;
+  border:1px solid #cfe2f7;
+  border-radius:6px;
+  padding:4px 5px;
+  text-align:center;
+  white-space:nowrap
+}
+.planning-event-time.no-time{color:#7d8996;background:#f2f4f6;border-color:#e1e6eb}
+.planning-event-icon{
+  width:21px;height:21px;border-radius:50%;
+  display:grid;place-items:center;
+  background:#eef2f6;font-size:8px;font-weight:900
+}
+.planning-event-main{min-width:0}
+.planning-event-main b{display:block;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.planning-event-main small{display:block;font-size:7px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:999px){
+  .planning-event-row{grid-template-columns:62px 28px 1fr auto;padding:8px 10px;gap:8px}
+  .planning-event-time{font-size:11px;padding:5px 6px}
+  .planning-event-icon{width:26px;height:26px;font-size:10px}
+  .planning-event-main b{font-size:11px}
+  .planning-event-main small{font-size:9px}
+}

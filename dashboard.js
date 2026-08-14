@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.10.5';
-const DASHBOARD_BUILD='2026-08-14 16:05';
+const DASHBOARD_VERSION='V1.10.6';
+const DASHBOARD_BUILD='2026-08-14 15:36';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -396,6 +396,35 @@ function wasteReminderForDashboardDate(date){
   }catch(_){return null}
 }
 
+
+function dashboardAgendaStart(x,win=null){
+  try{
+    if(typeof win?.agendaTime==='function'){
+      const t=win.agendaTime(x);
+      if(t)return t;
+    }
+  }catch(_){}
+  return x?.start||x?.time||x?.deadlineTime||x?.coffee?.time||'';
+}
+function dashboardAgendaEnd(x){
+  return x?.end||x?.endTime||x?.finish||x?.finishTime||'';
+}
+function planningTimeLabel(x){
+  const start=x?.time||x?.start||x?.deadlineTime||x?.coffee?.time||'';
+  const end=x?.end||x?.endTime||'';
+  return start ? (end&&end!==start ? `${start}–${end}` : start) : '';
+}
+function planningRow(x){
+  const tm=x.timeLabel||planningTimeLabel(x);
+  const cls=tm?'planning-event-time':'planning-event-time no-time';
+  return `<div class="planning-event-row">
+    <div class="${cls}">${esc(tm||'—')}</div>
+    <div class="planning-event-icon">${esc(x.icon||'•')}</div>
+    <div class="planning-event-main"><b>${esc(x.title||'Événement')}</b><small>${esc(x.sub||'')}</small></div>
+    ${x.tag?`<span class="tag ${x.kind||''}">${esc(x.tag)}</span>`:''}
+  </div>`;
+}
+
 function dashboardPlanningForDate(data,date){
   let rows=[];
   try{
@@ -403,8 +432,8 @@ function dashboardPlanningForDate(data,date){
     const win=frame?.contentWindow;
     if(typeof win?.eventsForDate==='function'){
       rows=(win.eventsForDate(date)||[]).map(x=>{
-        const start=x.start||x.time||'';
-        const end=x.end||'';
+        const start=dashboardAgendaStart(x,win);
+        const end=dashboardAgendaEnd(x);
         return {
           id:x.id||'',
           time:start,
@@ -420,15 +449,15 @@ function dashboardPlanningForDate(data,date){
       });
     }else{
       rows=(planningForDay(data,date)||[]).map(x=>{
-        const start=x.time||x.start||'';
-        const end=x.end||'';
+        const start=dashboardAgendaStart(x);
+        const end=dashboardAgendaEnd(x);
         return {...x,time:start,end,timeLabel:start?(end&&end!==start?`${start}–${end}`:start):''};
       });
     }
   }catch(_){
     rows=(planningForDay(data,date)||[]).map(x=>{
-      const start=x.time||x.start||'';
-      const end=x.end||'';
+      const start=dashboardAgendaStart(x);
+      const end=dashboardAgendaEnd(x);
       return {...x,time:start,end,timeLabel:start?(end&&end!==start?`${start}–${end}`:start):''};
     });
   }
@@ -454,7 +483,7 @@ function renderPlanningToday(data){
   $('planningPanelTitle').textContent="PLANNING D'AUJOURD'HUI";
   $('planningCount').textContent=rows.length;
   $('todayPlanning').innerHTML=rows.length
-    ? rows.map(x=>row(x.icon,(x.timeLabel?x.timeLabel+' — ':'')+x.title,x.sub,x.tag,x.kind)).join('')
+    ? rows.map(planningRow).join('')
     : '<div class="empty">Aucun élément au planning aujourd’hui</div>';
 }
 
@@ -470,7 +499,7 @@ function renderPlanningWeek(data){
     blocks.push(`<section class="week-day-group ${date===todayISO()?'today':''}">
       <div class="week-day-title">${esc(label)}${date===todayISO()?' • aujourd’hui':''}</div>
       ${items.length
-        ? items.map(x=>row(x.icon,(x.timeLabel?x.timeLabel+' — ':'')+x.title,x.sub,x.tag,x.kind)).join('')
+        ? items.map(planningRow).join('')
         : '<div class="week-day-empty">Aucun élément</div>'}
     </section>`);
   }
