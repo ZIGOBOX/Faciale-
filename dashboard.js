@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.10.0';
-const DASHBOARD_BUILD='2026-08-14 11:58';
+const DASHBOARD_VERSION='V1.10.1';
+const DASHBOARD_BUILD='2026-08-14 15:36';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -356,66 +356,35 @@ function planningForDay(data,date=todayISO()){
   if(waste)rows.push(waste);
   return rows.sort((a,b)=>`${a.time||'99:99'}${a.title||''}`.localeCompare(`${b.time||'99:99'}${b.title||''}`));
 }
-function renderPlanning(data){
-  const p=planningForDay(data);
-  $('planningCount').textContent=p.length;
-  $('todayPlanning').innerHTML=p.length?p.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="empty">Aucun élément au planning aujourd’hui</div>';
-}
 
-const TOP_URGENCY_KEY='pst_dashboard_top5_urgencies_v1';
-
-function savedTopUrgencyIds(){
-  try{
-    const x=JSON.parse(localStorage.getItem(TOP_URGENCY_KEY)||'[]');
-    return Array.isArray(x)?x.map(String).slice(0,5):[];
-  }catch{return []}
+let planningViewMode='today';
+function mondayOfWeek(date=todayISO()){
+  const d=parseDate(date); const shift=(d.getDay()+6)%7; d.setDate(d.getDate()-shift); return localISO(d);
 }
-function urgencyStableId(x){
-  return `${x.label||''}|${x.id||''}|${x.title||''}`;
+function renderPlanningToday(data){
+  const p=planningForDay(data,todayISO());
+  if($('planningPanelTitle'))$('planningPanelTitle').textContent="PLANNING D'AUJOURD'HUI";
+  if($('planningCount'))$('planningCount').textContent=p.length;
+  if($('todayPlanning'))$('todayPlanning').innerHTML=p.length?p.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="empty">Aucun élément au planning aujourd’hui</div>';
 }
-function saveTopUrgencyIds(ids){
-  localStorage.setItem(TOP_URGENCY_KEY,JSON.stringify((ids||[]).map(String).slice(0,5)));
-}
-function chosenUrgencies(all){
-  const ids=savedTopUrgencyIds();
-  if(!ids.length)return all.slice(0,5);
-  const map=new Map(all.map(x=>[urgencyStableId(x),x]));
-  const chosen=ids.map(id=>map.get(id)).filter(Boolean);
-  // si une urgence choisie a disparu, on complète automatiquement
-  if(chosen.length<5){
-    for(const x of all){
-      if(chosen.length>=5)break;
-      if(!chosen.some(y=>urgencyStableId(y)===urgencyStableId(x)))chosen.push(x);
-    }
+function renderPlanningWeek(data){
+  const monday=mondayOfWeek(todayISO()); let total=0; const blocks=[];
+  for(let i=0;i<7;i++){
+    const date=addDays(monday,i); const items=planningForDay(data,date); total+=items.length;
+    const label=parseDate(date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'short'});
+    blocks.push(`<section class="week-day-group ${date===todayISO()?'today':''}"><div class="week-day-title">${esc(label)}${date===todayISO()?' • aujourd’hui':''}</div>${items.length?items.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="week-day-empty">Aucun élément</div>'}</section>`);
   }
-  return chosen.slice(0,5);
+  if($('planningPanelTitle'))$('planningPanelTitle').textContent='PLANNING DE LA SEMAINE';
+  if($('planningCount'))$('planningCount').textContent=total;
+  if($('todayPlanning'))$('todayPlanning').innerHTML=blocks.join('');
 }
-function openTopUrgencyChooser(data){
-  const dialog=$('topUrgencyDialog'),box=$('topUrgencyChoices');
-  if(!dialog||!box)return;
-  const all=collectUrgentDashboardActions(data).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
-  const selected=new Set(savedTopUrgencyIds());
-  box.innerHTML=all.length?all.map(x=>{
-    const id=urgencyStableId(x);
-    return `<label class="urgency-choice">
-      <input type="checkbox" value="${esc(id)}" ${selected.has(id)?'checked':''}>
-      <span><b>${esc(x.title)}</b><small>${esc(x.label)}${x.priority?' • '+esc(x.priority):''}</small></span>
-      <span class="due">${x.due?esc(x.due):''}</span>
-    </label>`;
-  }).join(''):'<div class="empty">Aucune urgence disponible.</div>';
+function renderPlanningMode(data){
+  planningViewMode==='week'?renderPlanningWeek(data):renderPlanningToday(data);
+  $('planningTodayBtn')?.classList.toggle('active',planningViewMode==='today');
+  $('planningWeekBtn')?.classList.toggle('active',planningViewMode==='week');
+}
 
-  const updateCount=()=>{
-    const checked=[...box.querySelectorAll('input:checked')];
-    if(checked.length>5){
-      checked.at(-1).checked=false;
-    }
-    const count=box.querySelectorAll('input:checked').length;
-    if($('topUrgencyCount'))$('topUrgencyCount').textContent=`${count} / 5 sélectionnées`;
-  };
-  box.querySelectorAll('input').forEach(i=>i.addEventListener('change',updateCount));
-  updateCount();
-  dialog.showModal();
-}
+function renderPlanning(data){renderPlanningMode(data);}
 
 function renderUrgencies(data){
   const urgent=collectUrgentDashboardActions(data).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
@@ -538,6 +507,10 @@ if($('resetTopUrgencies'))$('resetTopUrgencies').onclick=()=>{
   if(data)renderUrgencies(data);
 };
 
+
+
+if($('planningTodayBtn'))$('planningTodayBtn').onclick=()=>{planningViewMode='today';const data=db();if(data)renderPlanningMode(data)};
+if($('planningWeekBtn'))$('planningWeekBtn').onclick=()=>{planningViewMode='week';const data=db();if(data)renderPlanningMode(data)};
 
 /* ---------- LIENS PERSONNALISÉS ---------- */
 const CUSTOM_LINKS_KEY='pst_dashboard_custom_links_v1';

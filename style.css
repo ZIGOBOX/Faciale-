@@ -464,3 +464,18 @@ main{max-width:1700px;margin:auto;padding:12px}
 @media(max-width:700px){
   .link-form{grid-template-columns:1fr}
 }
+
+.planning-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.planning-toggle{display:flex;gap:4px}
+.planning-toggle-btn{border:1px solid #cfd8e2;background:#fff;color:#405063;border-radius:7px;padding:5px 8px;font-size:9px;font-weight:900;cursor:pointer;white-space:nowrap}
+.planning-toggle-btn.active{background:#2f80ed;border-color:#2f80ed;color:#fff}
+#todayPlanning{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+.week-day-group{border-bottom:1px solid #e8edf2}
+.week-day-title{position:sticky;top:0;z-index:2;background:#f6f9fc;border-bottom:1px solid #dce5ed;padding:5px 8px;font-size:8px;font-weight:1000;color:#31455c;text-transform:uppercase}
+.week-day-group.today .week-day-title{background:#eaf3ff;color:#175f9f}
+.week-day-empty{padding:5px 8px;color:#8997a6;font-size:7px;font-style:italic}
+@media(min-width:1000px){
+.planning-toggle-btn{font-size:6.5px;padding:2px 4px;border-radius:5px}
+.week-day-title{font-size:6.5px;padding:3px 5px}
+.week-day-empty{font-size:6px;padding:3px 5px}
+}
