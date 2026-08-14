@@ -1,15 +1,25 @@
-# Dashboard Pilotage — V1.10.2
+# Dashboard Pilotage — V1.10.4
 
-Build : 2026-08-14 15:45
+Build : 2026-08-14 15:58
 
-Base : V1.10.0 raccordée à Pilotage V128.
+Correction majeure de synchronisation.
 
-Corrections :
-- bouton Semaine réellement fonctionnel ;
-- vue hebdomadaire lundi → dimanche ;
-- scroll interne dans le planning ;
-- planning lu directement depuis `eventsForDate()` de Pilotage V128 lorsque disponible ;
-- rappel poubelles affiché la veille du passage ;
-- l'élément poubelles du jour est retiré pour éviter un doublon.
+Le dashboard ne lance plus sa propre synchronisation Supabase.
+Pilotage Service Technique V128 devient l'unique source de synchronisation.
 
-Tout le reste de la V1.10.0 est conservé.
+Le dashboard :
+- lit `PSTMainState` de Pilotage V128 ;
+- écoute `pst:data-loaded` ;
+- relit l'état vivant chaque seconde sans requête réseau ;
+- utilise le miroir/pending V128 seulement en secours ;
+- n'envoie aucune donnée au cloud.
+
+Conservé :
+- Aujourd'hui / Semaine ;
+- scroll du planning ;
+- heures début / fin ;
+- poubelles la veille ;
+- Top 5 urgences sélectionnable ;
+- présence temps réel ;
+- maintenance, contrôles, ménage, graphiques ;
+- boîte à liens personnalisés.

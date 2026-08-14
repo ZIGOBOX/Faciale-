@@ -465,7 +465,7 @@ main{max-width:1700px;margin:auto;padding:12px}
   .link-form{grid-template-columns:1fr}
 }
 
-/* V1.10.2 planning toggle + scroll */
+/* V1.10.4 planning */
 .planning-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .planning-toggle{display:flex;gap:4px}
 .planning-toggle-btn{border:1px solid #cfd8e2;background:#fff;color:#405063;border-radius:7px;padding:5px 8px;font-size:9px;font-weight:900;cursor:pointer;white-space:nowrap}

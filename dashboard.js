@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.10.2';
-const DASHBOARD_BUILD='2026-08-14 15:45';
+const DASHBOARD_VERSION='V1.10.4';
+const DASHBOARD_BUILD='2026-08-14 15:58';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -363,28 +363,25 @@ function wasteReminderForDashboardDate(date){
     const api=frame?.contentWindow?.PSTWeatherWaste;
     if(!api?.collectionInfo||!api?.binForDate||!api?.localISO)return null;
 
-    // Rappel la veille : on cherche le passage du lendemain.
-    const reminderDay=parseDate(date);
-    const collectionDay=new Date(reminderDay);
-    collectionDay.setDate(collectionDay.getDate()+1);
-    const collectionISO=localISO(collectionDay);
+    const reminder=parseDate(date);
+    const collection=new Date(reminder);
+    collection.setDate(collection.getDate()+1);
+    const collectionISO=localISO(collection);
 
-    const wd=collectionDay.getDay();
+    const wd=collection.getDay();
     let friday=null;
-    if(wd===5)friday=new Date(collectionDay);
-    else if(wd===6){
-      friday=new Date(collectionDay);
-      friday.setDate(friday.getDate()-1);
-    } else return null;
+    if(wd===5)friday=new Date(collection);
+    else if(wd===6){friday=new Date(collection);friday.setDate(friday.getDate()-1)}
+    else return null;
 
     const ci=api.collectionInfo(friday);
-    const actual=api.localISO(ci.actual);
-    if(actual!==collectionISO)return null;
-
+    if(api.localISO(ci.actual)!==collectionISO)return null;
     const bin=api.binForDate(friday);
+
     return {
       id:`waste-reminder-${date}`,
       time:'',
+      timeLabel:'',
       icon:bin.icon||'🗑️',
       title:`${bin.icon||'🗑️'} Sortir ${bin.label||'le bac'}`,
       sub:`Passage demain • Rue Noëlas • Rue Jean Puy${ci.shifted?' • collecte décalée':''}`,
@@ -392,10 +389,7 @@ function wasteReminderForDashboardDate(date){
       kind:'warn',
       source:'waste'
     };
-  }catch(e){
-    console.warn('Rappel poubelles indisponible',e);
-    return null;
-  }
+  }catch(_){return null}
 }
 
 function dashboardPlanningForDate(data,date){
@@ -403,31 +397,40 @@ function dashboardPlanningForDate(data,date){
   try{
     const frame=document.getElementById('pilotageSource');
     const win=frame?.contentWindow;
-    // Source prioritaire : vraie fonction eventsForDate de Pilotage V128.
     if(typeof win?.eventsForDate==='function'){
-      const raw=win.eventsForDate(date)||[];
-      rows=raw.map(x=>({
-        id:x.id||'',
-        time:x.start||x.time||'',
-        icon:x.source==='roomprep'?'☕':x.source==='waste'?'🗑️':x.source==='meeting'?'📅':x.source==='maintenance'?'🔧':x.source==='periodic'?'🛡':x.source==='issue'?'⚠':'•',
-        title:x.title||'Événement',
-        sub:x.meta||[x.location,x.status].filter(Boolean).join(' • '),
-        tag:x.source||'Planning',
-        kind:(x.priority&&isUrgentPriority(x.priority))?'bad':'warn',
-        source:x.source||'planning'
-      }));
+      rows=(win.eventsForDate(date)||[]).map(x=>{
+        const start=x.start||x.time||'';
+        const end=x.end||'';
+        return {
+          id:x.id||'',
+          time:start,
+          end,
+          timeLabel:start?(end&&end!==start?`${start}–${end}`:start):'',
+          icon:x.source==='roomprep'?'☕':x.source==='meeting'?'📅':x.source==='maintenance'?'🔧':x.source==='periodic'?'🛡':x.source==='issue'?'⚠':x.source==='note'?'✎':'•',
+          title:x.title||'Événement',
+          sub:x.meta||[x.location,x.status].filter(Boolean).join(' • '),
+          tag:x.source||'Planning',
+          kind:(x.priority&&isUrgentPriority(x.priority))?'bad':'warn',
+          source:x.source||'planning'
+        };
+      });
     }else{
-      rows=planningForDay(data,date)||[];
+      rows=(planningForDay(data,date)||[]).map(x=>{
+        const start=x.time||x.start||'';
+        const end=x.end||'';
+        return {...x,time:start,end,timeLabel:start?(end&&end!==start?`${start}–${end}`:start):''};
+      });
     }
-  }catch(e){
-    console.warn('Planning V128 direct indisponible',e);
-    rows=planningForDay(data,date)||[];
+  }catch(_){
+    rows=(planningForDay(data,date)||[]).map(x=>{
+      const start=x.time||x.start||'';
+      const end=x.end||'';
+      return {...x,time:start,end,timeLabel:start?(end&&end!==start?`${start}–${end}`:start):''};
+    });
   }
 
-  // Retirer le passage poubelles du jour venant de Pilotage :
-  // notre dashboard doit l'afficher la veille uniquement.
+  // Le dashboard affiche la poubelle la veille, pas le jour du passage.
   rows=rows.filter(x=>x.source!=='waste');
-
   const waste=wasteReminderForDashboardDate(date);
   if(waste)rows.push(waste);
 
@@ -443,11 +446,11 @@ function mondayOfWeek(date=todayISO()){
 }
 
 function renderPlanningToday(data){
-  const p=dashboardPlanningForDate(data,todayISO());
-  if($('planningPanelTitle'))$('planningPanelTitle').textContent="PLANNING D'AUJOURD'HUI";
-  if($('planningCount'))$('planningCount').textContent=p.length;
-  if($('todayPlanning'))$('todayPlanning').innerHTML=p.length
-    ? p.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join('')
+  const rows=dashboardPlanningForDate(data,todayISO());
+  $('planningPanelTitle').textContent="PLANNING D'AUJOURD'HUI";
+  $('planningCount').textContent=rows.length;
+  $('todayPlanning').innerHTML=rows.length
+    ? rows.map(x=>row(x.icon,(x.timeLabel?x.timeLabel+' — ':'')+x.title,x.sub,x.tag,x.kind)).join('')
     : '<div class="empty">Aucun élément au planning aujourd’hui</div>';
 }
 
@@ -463,13 +466,13 @@ function renderPlanningWeek(data){
     blocks.push(`<section class="week-day-group ${date===todayISO()?'today':''}">
       <div class="week-day-title">${esc(label)}${date===todayISO()?' • aujourd’hui':''}</div>
       ${items.length
-        ? items.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join('')
+        ? items.map(x=>row(x.icon,(x.timeLabel?x.timeLabel+' — ':'')+x.title,x.sub,x.tag,x.kind)).join('')
         : '<div class="week-day-empty">Aucun élément</div>'}
     </section>`);
   }
-  if($('planningPanelTitle'))$('planningPanelTitle').textContent='PLANNING DE LA SEMAINE';
-  if($('planningCount'))$('planningCount').textContent=total;
-  if($('todayPlanning'))$('todayPlanning').innerHTML=blocks.join('');
+  $('planningPanelTitle').textContent='PLANNING DE LA SEMAINE';
+  $('planningCount').textContent=total;
+  $('todayPlanning').innerHTML=blocks.join('');
 }
 
 function renderPlanningMode(data){
@@ -480,6 +483,61 @@ function renderPlanningMode(data){
 }
 
 function renderPlanning(data){renderPlanningMode(data);}
+
+const TOP_URGENCY_KEY='pst_dashboard_top5_urgencies_v1';
+
+function savedTopUrgencyIds(){
+  try{
+    const x=JSON.parse(localStorage.getItem(TOP_URGENCY_KEY)||'[]');
+    return Array.isArray(x)?x.map(String).slice(0,5):[];
+  }catch{return []}
+}
+function urgencyStableId(x){
+  return `${x.label||''}|${x.id||''}|${x.title||''}`;
+}
+function saveTopUrgencyIds(ids){
+  localStorage.setItem(TOP_URGENCY_KEY,JSON.stringify((ids||[]).map(String).slice(0,5)));
+}
+function chosenUrgencies(all){
+  const ids=savedTopUrgencyIds();
+  if(!ids.length)return all.slice(0,5);
+  const map=new Map(all.map(x=>[urgencyStableId(x),x]));
+  const chosen=ids.map(id=>map.get(id)).filter(Boolean);
+  // si une urgence choisie a disparu, on complète automatiquement
+  if(chosen.length<5){
+    for(const x of all){
+      if(chosen.length>=5)break;
+      if(!chosen.some(y=>urgencyStableId(y)===urgencyStableId(x)))chosen.push(x);
+    }
+  }
+  return chosen.slice(0,5);
+}
+function openTopUrgencyChooser(data){
+  const dialog=$('topUrgencyDialog'),box=$('topUrgencyChoices');
+  if(!dialog||!box)return;
+  const all=collectUrgentDashboardActions(data).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  const selected=new Set(savedTopUrgencyIds());
+  box.innerHTML=all.length?all.map(x=>{
+    const id=urgencyStableId(x);
+    return `<label class="urgency-choice">
+      <input type="checkbox" value="${esc(id)}" ${selected.has(id)?'checked':''}>
+      <span><b>${esc(x.title)}</b><small>${esc(x.label)}${x.priority?' • '+esc(x.priority):''}</small></span>
+      <span class="due">${x.due?esc(x.due):''}</span>
+    </label>`;
+  }).join(''):'<div class="empty">Aucune urgence disponible.</div>';
+
+  const updateCount=()=>{
+    const checked=[...box.querySelectorAll('input:checked')];
+    if(checked.length>5){
+      checked.at(-1).checked=false;
+    }
+    const count=box.querySelectorAll('input:checked').length;
+    if($('topUrgencyCount'))$('topUrgencyCount').textContent=`${count} / 5 sélectionnées`;
+  };
+  box.querySelectorAll('input').forEach(i=>i.addEventListener('change',updateCount));
+  updateCount();
+  dialog.showModal();
+}
 
 function renderUrgencies(data){
   const urgent=collectUrgentDashboardActions(data).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
@@ -527,61 +585,71 @@ function renderAll(data){
   $('lastUpdate').textContent='Mise à jour : '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
 
-async function sync(){
-  if(syncBusy)return;syncBusy=true;
+
+function renderFromPilotage(){
   try{
-    setState('Synchronisation…');
-    await fetchCloudDb();
-    // Fusion locale + cloud : un nouvel élément existe parfois d'abord en local,
-    // tandis qu'un autre appareil peut avoir déjà envoyé une donnée plus récente au cloud.
     const data=bestPilotageDb();
-    if(!data)throw new Error('Aucune donnée Pilotage disponible');
+    if(!data){
+      setState('En attente de Pilotage…');
+      return;
+    }
     renderAll(data);
-    const todayPersonal=(data.personalEvents||[]).filter(x=>normalizeDateValue(x.date)===todayISO()).length;
-    const todayCoffee=roomPrepAgendaItems(data).filter(x=>normalizeDateValue(x.date)===todayISO()&&norm(x.status)!=='termine').length;
-    const ts=cloudUpdatedAt?new Date(cloudUpdatedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):new Date().toLocaleTimeString('fr-FR');
-    $('lastSync').textContent=`Planning exact : ${planningForDay(data).length} élément(s) aujourd’hui • dont ${todayCoffee} salle/café • cloud ${ts}`;
-    setState('Connecté au Pilotage ✓',true);
-  }catch(e){
-    console.error(e);const data=mergePilotageData(localDb(),cloudDb);
-    if(data){cloudDb=null;renderAll(data);$('lastSync').textContent=`Mode local • ${e.message||e}`;setState('Mode local • serveur indisponible')}
-    else{$('lastSync').textContent=e.message||String(e);setState('Données indisponibles')}
-  }finally{syncBusy=false}
+    setState('Connecté au Pilotage V128 ✓',true);
+    const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    if($('lastSync'))$('lastSync').textContent=`État vivant Pilotage lu à ${now}`;
+  }catch(error){
+    console.error('Lecture dashboard',error);
+    setState('Lecture Pilotage interrompue');
+  }
 }
 
+function sync(){
+  // Le dashboard ne synchronise PLUS lui-même avec Supabase.
+  // Pilotage V128 est l'unique moteur de synchronisation.
+  renderFromPilotage();
+}
 
+$('refresh').onclick=renderFromPilotage;
+if($('refreshTop'))$('refreshTop').onclick=renderFromPilotage;
+
+window.addEventListener('focus',renderFromPilotage);
+window.addEventListener('online',renderFromPilotage);
 window.addEventListener('storage',e=>{
-  if([LEGACY_STORAGE_KEY,V128_PENDING_KEY,V128_MIRROR_KEY,'pst_room_preps_v106'].includes(e.key)){
-    const data=localDb();
-    if(data){
-      renderAll(data);
-      setState('Connecté au Pilotage ✓',true);
-      if($('lastSync'))$('lastSync').textContent=`Mise à jour locale immédiate à ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
-    }
-  }
+  if([V128_PENDING_KEY,V128_MIRROR_KEY,LEGACY_STORAGE_KEY].includes(e.key))renderFromPilotage();
 });
 
-$('refresh').onclick=sync;
-$('refreshTop').onclick=sync;
-window.addEventListener('focus',sync);
-window.addEventListener('online',sync);
-window.addEventListener('resize',()=>{const data=db();if(data)renderCharts(data)});
-setInterval(sync,5000);
-
-// V128 : lecture directe de l'état vivant pour refléter immédiatement les nouvelles saisies.
-setInterval(()=>{const data=bestPilotageDb();if(data)renderAll(data)},1000);
-sync();
-
+// Lecture légère de l'état vivant : aucune requête Supabase supplémentaire.
+setInterval(renderFromPilotage,1000);
 setInterval(()=>{const data=db();if(data){renderKpis(data);renderAgentNow(data)}},60000);
 
 const pilotageFrame=document.getElementById('pilotageSource');
 if(pilotageFrame){
   pilotageFrame.addEventListener('load',()=>{
-    setTimeout(()=>{const data=bestPilotageDb();if(data)renderAll(data)},800);
-    setTimeout(()=>{const data=bestPilotageDb();if(data)renderAll(data)},1800);
-    setTimeout(()=>{const data=bestPilotageDb();if(data)renderAll(data)},3500);
+    const win=pilotageFrame.contentWindow;
+    try{
+      win?.addEventListener('pst:data-loaded',renderFromPilotage);
+      win?.addEventListener('pst:cloud-error',renderFromPilotage);
+    }catch(_){}
+    setTimeout(renderFromPilotage,500);
+    setTimeout(renderFromPilotage,1500);
+    setTimeout(renderFromPilotage,3000);
   });
 }
+
+document.addEventListener('click',e=>{
+  if(e.target.closest('#planningTodayBtn')){
+    planningViewMode='today';
+    renderFromPilotage();
+    return;
+  }
+  if(e.target.closest('#planningWeekBtn')){
+    planningViewMode='week';
+    renderFromPilotage();
+    return;
+  }
+});
+
+renderFromPilotage();
 
 if($('chooseTopUrgencies'))$('chooseTopUrgencies').onclick=()=>{
   const data=db();
@@ -602,24 +670,6 @@ if($('resetTopUrgencies'))$('resetTopUrgencies').onclick=()=>{
   if(data)renderUrgencies(data);
 };
 
-
-
-document.addEventListener('click',e=>{
-  const todayBtn=e.target.closest('#planningTodayBtn');
-  if(todayBtn){
-    planningViewMode='today';
-    const data=db();
-    if(data)renderPlanningMode(data);
-    return;
-  }
-  const weekBtn=e.target.closest('#planningWeekBtn');
-  if(weekBtn){
-    planningViewMode='week';
-    const data=db();
-    if(data)renderPlanningMode(data);
-    return;
-  }
-});
 
 /* ---------- LIENS PERSONNALISÉS ---------- */
 const CUSTOM_LINKS_KEY='pst_dashboard_custom_links_v1';
@@ -736,11 +786,3 @@ document.addEventListener('click',e=>{
   const down=e.target.closest('[data-link-down]');if(down){moveCustomLink(down.dataset.linkDown,1);return}
 });
 renderCustomLinks();
-
-if(pilotageFrame){
-  pilotageFrame.addEventListener('load',()=>{
-    setTimeout(()=>{const data=db();if(data)renderPlanningMode(data)},700);
-    setTimeout(()=>{const data=db();if(data)renderPlanningMode(data)},1800);
-    setTimeout(()=>{const data=db();if(data)renderPlanningMode(data)},3500);
-  });
-}
