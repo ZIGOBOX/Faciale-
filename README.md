@@ -1,14 +1,15 @@
-# Dashboard Pilotage — V1.10.1
+# Dashboard Pilotage — V1.10.2
 
-Build : 2026-08-14 15:36
+Build : 2026-08-14 15:45
 
 Base : V1.10.0 raccordée à Pilotage V128.
 
-Nouveautés :
-- boutons Aujourd'hui / Semaine dans le planning ;
-- vue Aujourd'hui par défaut ;
-- vue hebdomadaire du lundi au dimanche ;
-- scroll interne si beaucoup de rendez-vous ou d'éléments ;
-- compteur adapté à la vue choisie.
+Corrections :
+- bouton Semaine réellement fonctionnel ;
+- vue hebdomadaire lundi → dimanche ;
+- scroll interne dans le planning ;
+- planning lu directement depuis `eventsForDate()` de Pilotage V128 lorsque disponible ;
+- rappel poubelles affiché la veille du passage ;
+- l'élément poubelles du jour est retiré pour éviter un doublon.
 
 Tout le reste de la V1.10.0 est conservé.

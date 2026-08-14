@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.10.1';
-const DASHBOARD_BUILD='2026-08-14 15:36';
+const DASHBOARD_VERSION='V1.10.2';
+const DASHBOARD_BUILD='2026-08-14 15:45';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -357,29 +357,124 @@ function planningForDay(data,date=todayISO()){
   return rows.sort((a,b)=>`${a.time||'99:99'}${a.title||''}`.localeCompare(`${b.time||'99:99'}${b.title||''}`));
 }
 
-let planningViewMode='today';
-function mondayOfWeek(date=todayISO()){
-  const d=parseDate(date); const shift=(d.getDay()+6)%7; d.setDate(d.getDate()-shift); return localISO(d);
+function wasteReminderForDashboardDate(date){
+  try{
+    const frame=document.getElementById('pilotageSource');
+    const api=frame?.contentWindow?.PSTWeatherWaste;
+    if(!api?.collectionInfo||!api?.binForDate||!api?.localISO)return null;
+
+    // Rappel la veille : on cherche le passage du lendemain.
+    const reminderDay=parseDate(date);
+    const collectionDay=new Date(reminderDay);
+    collectionDay.setDate(collectionDay.getDate()+1);
+    const collectionISO=localISO(collectionDay);
+
+    const wd=collectionDay.getDay();
+    let friday=null;
+    if(wd===5)friday=new Date(collectionDay);
+    else if(wd===6){
+      friday=new Date(collectionDay);
+      friday.setDate(friday.getDate()-1);
+    } else return null;
+
+    const ci=api.collectionInfo(friday);
+    const actual=api.localISO(ci.actual);
+    if(actual!==collectionISO)return null;
+
+    const bin=api.binForDate(friday);
+    return {
+      id:`waste-reminder-${date}`,
+      time:'',
+      icon:bin.icon||'🗑️',
+      title:`${bin.icon||'🗑️'} Sortir ${bin.label||'le bac'}`,
+      sub:`Passage demain • Rue Noëlas • Rue Jean Puy${ci.shifted?' • collecte décalée':''}`,
+      tag:'Poubelles',
+      kind:'warn',
+      source:'waste'
+    };
+  }catch(e){
+    console.warn('Rappel poubelles indisponible',e);
+    return null;
+  }
 }
+
+function dashboardPlanningForDate(data,date){
+  let rows=[];
+  try{
+    const frame=document.getElementById('pilotageSource');
+    const win=frame?.contentWindow;
+    // Source prioritaire : vraie fonction eventsForDate de Pilotage V128.
+    if(typeof win?.eventsForDate==='function'){
+      const raw=win.eventsForDate(date)||[];
+      rows=raw.map(x=>({
+        id:x.id||'',
+        time:x.start||x.time||'',
+        icon:x.source==='roomprep'?'☕':x.source==='waste'?'🗑️':x.source==='meeting'?'📅':x.source==='maintenance'?'🔧':x.source==='periodic'?'🛡':x.source==='issue'?'⚠':'•',
+        title:x.title||'Événement',
+        sub:x.meta||[x.location,x.status].filter(Boolean).join(' • '),
+        tag:x.source||'Planning',
+        kind:(x.priority&&isUrgentPriority(x.priority))?'bad':'warn',
+        source:x.source||'planning'
+      }));
+    }else{
+      rows=planningForDay(data,date)||[];
+    }
+  }catch(e){
+    console.warn('Planning V128 direct indisponible',e);
+    rows=planningForDay(data,date)||[];
+  }
+
+  // Retirer le passage poubelles du jour venant de Pilotage :
+  // notre dashboard doit l'afficher la veille uniquement.
+  rows=rows.filter(x=>x.source!=='waste');
+
+  const waste=wasteReminderForDashboardDate(date);
+  if(waste)rows.push(waste);
+
+  return rows.sort((a,b)=>`${a.time||'99:99'}${a.title||''}`.localeCompare(`${b.time||'99:99'}${b.title||''}`));
+}
+
+let planningViewMode='today';
+
+function mondayOfWeek(date=todayISO()){
+  const d=parseDate(date);
+  d.setDate(d.getDate()-((d.getDay()+6)%7));
+  return localISO(d);
+}
+
 function renderPlanningToday(data){
-  const p=planningForDay(data,todayISO());
+  const p=dashboardPlanningForDate(data,todayISO());
   if($('planningPanelTitle'))$('planningPanelTitle').textContent="PLANNING D'AUJOURD'HUI";
   if($('planningCount'))$('planningCount').textContent=p.length;
-  if($('todayPlanning'))$('todayPlanning').innerHTML=p.length?p.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="empty">Aucun élément au planning aujourd’hui</div>';
+  if($('todayPlanning'))$('todayPlanning').innerHTML=p.length
+    ? p.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join('')
+    : '<div class="empty">Aucun élément au planning aujourd’hui</div>';
 }
+
 function renderPlanningWeek(data){
-  const monday=mondayOfWeek(todayISO()); let total=0; const blocks=[];
+  const monday=mondayOfWeek(todayISO());
+  let total=0;
+  const blocks=[];
   for(let i=0;i<7;i++){
-    const date=addDays(monday,i); const items=planningForDay(data,date); total+=items.length;
+    const date=addDays(monday,i);
+    const items=dashboardPlanningForDate(data,date);
+    total+=items.length;
     const label=parseDate(date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'short'});
-    blocks.push(`<section class="week-day-group ${date===todayISO()?'today':''}"><div class="week-day-title">${esc(label)}${date===todayISO()?' • aujourd’hui':''}</div>${items.length?items.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join(''):'<div class="week-day-empty">Aucun élément</div>'}</section>`);
+    blocks.push(`<section class="week-day-group ${date===todayISO()?'today':''}">
+      <div class="week-day-title">${esc(label)}${date===todayISO()?' • aujourd’hui':''}</div>
+      ${items.length
+        ? items.map(x=>row(x.icon,(x.time?x.time+' — ':'')+x.title,x.sub,x.tag,x.kind)).join('')
+        : '<div class="week-day-empty">Aucun élément</div>'}
+    </section>`);
   }
   if($('planningPanelTitle'))$('planningPanelTitle').textContent='PLANNING DE LA SEMAINE';
   if($('planningCount'))$('planningCount').textContent=total;
   if($('todayPlanning'))$('todayPlanning').innerHTML=blocks.join('');
 }
+
 function renderPlanningMode(data){
-  planningViewMode==='week'?renderPlanningWeek(data):renderPlanningToday(data);
+  if(planningViewMode==='week')renderPlanningWeek(data);
+  else renderPlanningToday(data);
   $('planningTodayBtn')?.classList.toggle('active',planningViewMode==='today');
   $('planningWeekBtn')?.classList.toggle('active',planningViewMode==='week');
 }
@@ -509,8 +604,22 @@ if($('resetTopUrgencies'))$('resetTopUrgencies').onclick=()=>{
 
 
 
-if($('planningTodayBtn'))$('planningTodayBtn').onclick=()=>{planningViewMode='today';const data=db();if(data)renderPlanningMode(data)};
-if($('planningWeekBtn'))$('planningWeekBtn').onclick=()=>{planningViewMode='week';const data=db();if(data)renderPlanningMode(data)};
+document.addEventListener('click',e=>{
+  const todayBtn=e.target.closest('#planningTodayBtn');
+  if(todayBtn){
+    planningViewMode='today';
+    const data=db();
+    if(data)renderPlanningMode(data);
+    return;
+  }
+  const weekBtn=e.target.closest('#planningWeekBtn');
+  if(weekBtn){
+    planningViewMode='week';
+    const data=db();
+    if(data)renderPlanningMode(data);
+    return;
+  }
+});
 
 /* ---------- LIENS PERSONNALISÉS ---------- */
 const CUSTOM_LINKS_KEY='pst_dashboard_custom_links_v1';
@@ -627,3 +736,11 @@ document.addEventListener('click',e=>{
   const down=e.target.closest('[data-link-down]');if(down){moveCustomLink(down.dataset.linkDown,1);return}
 });
 renderCustomLinks();
+
+if(pilotageFrame){
+  pilotageFrame.addEventListener('load',()=>{
+    setTimeout(()=>{const data=db();if(data)renderPlanningMode(data)},700);
+    setTimeout(()=>{const data=db();if(data)renderPlanningMode(data)},1800);
+    setTimeout(()=>{const data=db();if(data)renderPlanningMode(data)},3500);
+  });
+}
