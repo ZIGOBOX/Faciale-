@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.12.8';
-const DASHBOARD_BUILD='2026-08-18 12:42';
+const DASHBOARD_VERSION='V1.12.9';
+const DASHBOARD_BUILD='2026-08-18 12:49';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -1134,3 +1134,101 @@ else init();
 })();
 
 setInterval(()=>{try{renderNativeInterventions(db())}catch(_){}},2000);
+
+
+/* ===== V1.12.9 — insertion sûre de la case Interventions dans le canvas libre ===== */
+(function(){
+function addNativeInterventionsToCanvas(){
+  const canvas=document.getElementById('freeLayoutCanvas');
+  const tpl=document.getElementById('interventionsNativeTemplate');
+  if(!canvas||!tpl||document.getElementById('interventionsNativePanel'))return;
+
+  const fragment=tpl.content.cloneNode(true);
+  const panel=fragment.querySelector('#interventionsNativePanel');
+  if(!panel)return;
+
+  panel.classList.add('dashboard-free-card');
+  panel.dataset.freeId='interventions-ouvertes-native-v129';
+  panel.dataset.freeTitle='Interventions ouvertes';
+  panel.dataset.hidden='0';
+
+  // Add the same controls as other free cards.
+  const close=document.createElement('button');
+  close.type='button';
+  close.className='free-card-close';
+  close.title='Masquer cette case';
+  close.textContent='×';
+  panel.appendChild(close);
+
+  const resize=document.createElement('div');
+  resize.className='free-resize-corner';
+  resize.title='Tirer pour redimensionner';
+  resize.textContent='↘';
+  panel.appendChild(resize);
+
+  canvas.appendChild(panel);
+
+  // Default visible position, without modifying other cards.
+  panel.style.left='20px';
+  panel.style.top='560px';
+  panel.style.width='620px';
+  panel.style.height='300px';
+  panel.style.zIndex='2';
+
+  // Drag compatible with free layout mode
+  panel.addEventListener('pointerdown',e=>{
+    if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900||e.button!==0||e.target.closest('button,.free-resize-corner'))return;
+    e.preventDefault();
+    const sx=e.clientX,sy=e.clientY,ox=parseFloat(panel.style.left)||0,oy=parseFloat(panel.style.top)||0,pid=e.pointerId;
+    try{panel.setPointerCapture(pid)}catch(_){}
+    const move=ev=>{
+      if(ev.pointerId!==pid)return;
+      panel.style.left=Math.max(0,Math.round((ox+ev.clientX-sx)/10)*10)+'px';
+      panel.style.top=Math.max(0,Math.round((oy+ev.clientY-sy)/10)*10)+'px';
+    };
+    const end=ev=>{
+      if(ev.pointerId!==pid)return;
+      panel.removeEventListener('pointermove',move);
+      panel.removeEventListener('pointerup',end);
+      panel.removeEventListener('pointercancel',end);
+    };
+    panel.addEventListener('pointermove',move);
+    panel.addEventListener('pointerup',end);
+    panel.addEventListener('pointercancel',end);
+  });
+
+  resize.addEventListener('pointerdown',e=>{
+    if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900)return;
+    e.preventDefault();e.stopPropagation();
+    const sx=e.clientX,sy=e.clientY,sw=panel.offsetWidth,sh=panel.offsetHeight,pid=e.pointerId;
+    try{resize.setPointerCapture(pid)}catch(_){}
+    const move=ev=>{
+      if(ev.pointerId!==pid)return;
+      panel.style.width=Math.max(360,Math.round((sw+ev.clientX-sx)/10)*10)+'px';
+      panel.style.height=Math.max(180,Math.round((sh+ev.clientY-sy)/10)*10)+'px';
+    };
+    const end=ev=>{
+      if(ev.pointerId!==pid)return;
+      resize.removeEventListener('pointermove',move);
+      resize.removeEventListener('pointerup',end);
+      resize.removeEventListener('pointercancel',end);
+    };
+    resize.addEventListener('pointermove',move);
+    resize.addEventListener('pointerup',end);
+    resize.addEventListener('pointercancel',end);
+  });
+
+  close.addEventListener('click',e=>{
+    e.stopPropagation();
+    panel.style.display='none';
+  });
+
+  // Make sure content renders immediately.
+  try{renderNativeInterventions(db())}catch(_){}
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(addNativeInterventionsToCanvas,350));
+}else{
+  setTimeout(addNativeInterventionsToCanvas,350);
+}
+})();
