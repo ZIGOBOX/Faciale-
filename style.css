@@ -518,43 +518,61 @@ main{max-width:1700px;margin:auto;padding:12px}
   .planning-event-main small{font-size:9px}
 }
 
-/* V1.10.7 — organisation personnalisable du dashboard */
-.layout-edit-btn.active{background:#1f6fb2!important;color:#fff!important;border-color:#1f6fb2!important}
+
+/* V1.10.8 — organisation PAR ITEM */
 body.layout-editing main{padding-top:38px;position:relative}
 body.layout-editing main:before{
-  content:"MODE ORGANISATION — déplace, agrandis ou masque les blocs";
+  content:"MODE ORGANISATION PAR ITEM — chaque case est indépendante";
   position:absolute;top:4px;left:0;right:0;text-align:center;
   font-size:10px;font-weight:900;color:#315b82
 }
-.dashboard-block{position:relative;transition:opacity .15s ease,outline .15s ease}
-body.layout-editing .dashboard-block{outline:2px dashed #7faed5;outline-offset:2px}
-.dashboard-block.is-hidden{display:none!important}
-.dashboard-block.is-wide{grid-column:1/-1!important;width:100%!important}
-.dashboard-block.is-compact{max-height:170px!important;overflow:auto!important}
-.block-layout-tools{
-  display:none;position:absolute;right:7px;top:7px;z-index:50;
-  gap:4px;align-items:center;padding:4px;background:rgba(255,255,255,.96);
-  border:1px solid #cbd9e6;border-radius:8px;box-shadow:0 2px 8px rgba(29,64,94,.12)
+.layout-edit-btn.active{background:#1f6fb2!important;color:#fff!important;border-color:#1f6fb2!important}
+
+/* Chaque carte/panneau manipulable */
+.layout-item{position:relative!important;transition:opacity .15s ease,outline .15s ease}
+body.layout-editing .layout-item{outline:2px dashed #73a9d5;outline-offset:-2px}
+.layout-item.is-hidden{display:none!important}
+.layout-item.is-wide{grid-column:span 2!important}
+.layout-item.is-full{grid-column:1/-1!important}
+.layout-item.is-compact{max-height:125px!important;min-height:72px!important;overflow:auto!important}
+
+.item-layout-tools{
+  display:none;position:absolute;right:5px;top:5px;z-index:80;
+  gap:3px;align-items:center;padding:3px;background:rgba(255,255,255,.97);
+  border:1px solid #bfd0df;border-radius:8px;box-shadow:0 2px 8px rgba(29,64,94,.16)
 }
-body.layout-editing .block-layout-tools{display:flex}
-.block-layout-tools button{
-  min-width:28px;height:28px;padding:0 6px;border:1px solid #c8d5e1;border-radius:6px;
+body.layout-editing .item-layout-tools{display:flex}
+.item-layout-tools button{
+  min-width:28px;height:28px;padding:0 5px;border:1px solid #c8d5e1;border-radius:6px;
   background:#fff;color:#29465f;font-size:13px;font-weight:900;cursor:pointer
 }
-.block-layout-tools button:hover{background:#edf5fc}
-.block-layout-tools .block-close{color:#a12632;background:#fff2f3;border-color:#efc5ca}
-.hidden-blocks-tray{
+.item-layout-tools button:hover{background:#edf5fc}
+.item-layout-tools .item-close{color:#a12632;background:#fff2f3;border-color:#efc5ca}
+
+.item-hidden-tray{
   display:none;margin:8px 0;padding:7px;border:1px dashed #9fb8cd;border-radius:8px;
   background:#f5f9fc;gap:6px;align-items:center;flex-wrap:wrap
 }
-body.layout-editing .hidden-blocks-tray{display:flex}
-.hidden-blocks-tray strong{font-size:9px;color:#53697b}
-.hidden-blocks-tray button{
+body.layout-editing .item-hidden-tray{display:flex}
+.item-hidden-tray strong{font-size:9px;color:#53697b}
+.item-hidden-tray button{
   border:1px solid #c8d5e1;border-radius:6px;background:#fff;padding:5px 8px;
   font-size:8px;font-weight:800;color:#315b82;cursor:pointer
 }
-@media(max-width:700px){
-  .block-layout-tools{right:5px;top:5px}
-  .block-layout-tools button{min-width:34px;height:34px}
+
+/* En mode PC, permet réellement l'agrandissement des items dans les grilles */
+@media(min-width:1000px){
+  .kpi-grid,.middle-grid,.bottom-grid{
+    grid-auto-flow:row!important;
+  }
+  .kpi-grid .layout-item.is-wide{grid-column:span 2!important}
+  .middle-grid .layout-item.is-wide,.bottom-grid .layout-item.is-wide{grid-column:span 2!important}
+  .kpi-grid .layout-item.is-full,
+  .middle-grid .layout-item.is-full,
+  .bottom-grid .layout-item.is-full{grid-column:1/-1!important}
+}
+@media(max-width:999px){
+  .layout-item.is-wide,.layout-item.is-full{grid-column:1/-1!important}
+  .item-layout-tools button{min-width:34px;height:34px}
   body.layout-editing main{padding-top:45px}
 }
