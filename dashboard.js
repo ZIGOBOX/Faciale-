@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.12.6';
-const DASHBOARD_BUILD='2026-08-18 10:02';
+const DASHBOARD_VERSION='V1.12.7';
+const DASHBOARD_BUILD='2026-08-18 10:12';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -612,8 +612,48 @@ function renderCharts(data){
   series.forEach(s=>{ctx.beginPath();s.v.forEach((v,i)=>{const x=pad.l+cw*i/6,y=pad.t+ch-(v/max)*ch;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.strokeStyle=s.c;ctx.lineWidth=2.2;ctx.stroke()});
   days.forEach((d,i)=>{ctx.fillStyle='#69788a';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(parseDate(d).toLocaleDateString('fr-FR',{weekday:'short'}).replace('.',''),pad.l+cw*i/6,h-7)});
 }
+
+/* ===== V1.12.7 — INTERVENTIONS OUVERTES NATIVES ===== */
+function dashboardOpenMaintenanceRows(data=db()){
+  const rows=Array.isArray(data?.maintenance)?data.maintenance:[];
+  return rows.filter(x=>!isClosedStatus(x.status));
+}
+function renderNativeInterventions(data=db()){
+  const box=document.getElementById('interventionsNativeList');
+  const count=document.getElementById('interventionsNativeCount');
+  if(!box||!count)return;
+  const rows=dashboardOpenMaintenanceRows(data);
+  count.textContent=String(rows.length);
+  if(!rows.length){
+    box.innerHTML='<div class="native-empty">Aucune intervention ouverte.</div>';
+    return;
+  }
+  box.innerHTML=rows.map(x=>{
+    const details=[
+      x.time?`🕒 ${x.time}`:'',
+      x.family||'',
+      x.building||'',
+      x.floor||'',
+      x.room||'',
+      x.requester?`Demandeur : ${x.requester}`:'',
+      x.assigned?`Assigné : ${x.assigned}`:'',
+      x.dueDate?`Échéance : ${x.dueDate}`:''
+    ].filter(Boolean).join(' • ');
+    return `<div class="native-intervention-row">
+      <div>
+        <b>${esc(x.title||x.no||'Intervention')}</b>
+        <small>${esc(details)}</small>
+      </div>
+      <div class="native-intervention-badges">
+        ${x.priority?`<span class="native-priority">${esc(x.priority)}</span>`:''}
+        <span class="native-status">${esc(x.status||'Ouverte')}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function renderAll(data){
-  renderKpis(data);renderAgentNow(data);renderPlanning(data);renderUrgencies(data);renderPeriodic(data);renderDomains(data);renderCharts(data);
+  renderKpis(data);renderNativeInterventions(data);renderAgentNow(data);renderPlanning(data);renderUrgencies(data);renderPeriodic(data);renderDomains(data);renderCharts(data);
   const d=new Date();$('todayTitle').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('lastUpdate').textContent='Mise à jour : '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
@@ -1093,203 +1133,4 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else init();
 })();
 
-
-/* ===== V1.12.3 — INTERVENTIONS OUVERTES VISIBLES ===== */
-(function(){
-const PANEL_ID='openInterventionsPanelV123';
-const STORE='pst_open_interventions_panel_v123';
-
-function getPilotageData(){
-  try{
-    if(typeof db==='function'){
-      const d=db();
-      if(d)return d;
-    }
-  }catch(_){}
-  try{
-    const frame=document.getElementById('pilotageSource');
-    const live=frame?.contentWindow?.PSTMainState?.get?.();
-    if(live)return live;
-  }catch(_){}
-  return null;
-}
-function isClosed(v){
-  const s=String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return /(clotur|ferme|termine|resolu|annule|archive|realise)/.test(s);
-}
-function openInterventions(){
-  const d=getPilotageData();
-  if(!d)return [];
-  const rows=Array.isArray(d.maintenance)?d.maintenance:[];
-  return rows.filter(x=>{
-    const s=norm(x.status||x.statut||x.state||'');
-    return ![
-      'cloture','cloturee',
-      'termine','terminee',
-      'ferme','fermee',
-      'archive','archivee',
-      'annule','annulee',
-      'realise','realisee',
-      'resolu','resolue'
-    ].includes(s);
-  });
-}
-function escv(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function renderPanel(){
-  const panel=document.getElementById(PANEL_ID);
-  const list=panel?.querySelector('.oi-list');
-  const count=panel?.querySelector('.oi-count');
-  if(!panel||!list)return;
-  const rows=openInterventions();
-  if(count)count.textContent=String(rows.length);
-  if(!rows.length){
-    list.innerHTML='<div class="oi-empty">Aucune intervention ouverte.</div>';
-    return;
-  }
-  list.innerHTML=rows.map(x=>{
-    const title=x.title||x.titre||x.subject||x.no||x.numero||'Intervention';
-    const details=[
-      x.time?`🕒 ${x.time}`:'',
-      x.family||x.category||x.categorie,
-      x.building||x.batiment,
-      x.floor||x.etage,
-      x.room||x.salle,
-      x.requester?`Demandeur: ${x.requester}`:'',
-      x.assigned?`Assigné: ${x.assigned}`:'',
-      x.dueDate?`Échéance: ${x.dueDate}`:''
-    ].filter(Boolean).join(' • ');
-    const status=x.status||x.statut||'Ouverte';
-    const priority=x.priority||x.priorite||'';
-    return `<div class="oi-row">
-      <div class="oi-text">
-        <b>${escv(title)}</b>
-        <small>${escv(details)}</small>
-      </div>
-      <div class="oi-badges">
-        ${priority?`<span class="oi-priority">${escv(priority)}</span>`:''}
-        <span class="oi-status">${escv(status)}</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-function savePanel(){
-  const p=document.getElementById(PANEL_ID);if(!p)return;
-  try{
-    localStorage.setItem(STORE,JSON.stringify({
-      x:parseFloat(p.style.left)||0,
-      y:parseFloat(p.style.top)||0,
-      w:p.offsetWidth,
-      h:p.offsetHeight,
-      hidden:p.style.display==='none'
-    }));
-  }catch(_){}
-}
-function loadPanelState(p){
-  try{
-    const s=JSON.parse(localStorage.getItem(STORE)||'null');
-    if(!s)return false;
-    p.style.left=(Number(s.x)||20)+'px';
-    p.style.top=(Number(s.y)||520)+'px';
-    p.style.width=Math.max(360,Number(s.w)||620)+'px';
-    p.style.height=Math.max(180,Number(s.h)||300)+'px';
-    if(s.hidden)p.style.display='none';
-    return true;
-  }catch(_){return false}
-}
-function addPanel(){
-  const canvas=document.getElementById('freeLayoutCanvas');
-  if(!canvas||document.getElementById(PANEL_ID))return;
-
-  const panel=document.createElement('section');
-  panel.id=PANEL_ID;
-  panel.className='dashboard-free-card open-interventions-panel';
-  panel.dataset.freeId='interventions-ouvertes-v123';
-  panel.dataset.freeTitle='Interventions ouvertes';
-  panel.dataset.hidden='0';
-  panel.innerHTML=`
-    <div class="oi-head">
-      <h3>INTERVENTIONS OUVERTES</h3>
-      <strong class="oi-count">0</strong>
-    </div>
-    <div class="oi-list"></div>
-    <button type="button" class="free-card-close" title="Masquer">×</button>
-    <div class="free-resize-corner" title="Tirer pour redimensionner">↘</div>`;
-
-  canvas.appendChild(panel);
-
-  // Position visible by default, directly under the first dashboard rows.
-  if(!loadPanelState(panel)){
-    panel.style.left='20px';
-    panel.style.top='520px';
-    panel.style.width='620px';
-    panel.style.height='300px';
-  }
-  panel.style.zIndex='5';
-
-  // Drag
-  panel.addEventListener('pointerdown',e=>{
-    if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900||e.button!==0||e.target.closest('button,.free-resize-corner'))return;
-    e.preventDefault();
-    const sx=e.clientX, sy=e.clientY;
-    const ox=parseFloat(panel.style.left)||0, oy=parseFloat(panel.style.top)||0;
-    const pid=e.pointerId;
-    try{panel.setPointerCapture(pid)}catch(_){}
-    const move=ev=>{
-      if(ev.pointerId!==pid)return;
-      panel.style.left=Math.max(0,Math.round((ox+ev.clientX-sx)/10)*10)+'px';
-      panel.style.top=Math.max(0,Math.round((oy+ev.clientY-sy)/10)*10)+'px';
-    };
-    const end=ev=>{
-      if(ev.pointerId!==pid)return;
-      panel.removeEventListener('pointermove',move);
-      panel.removeEventListener('pointerup',end);
-      panel.removeEventListener('pointercancel',end);
-      savePanel();
-    };
-    panel.addEventListener('pointermove',move);
-    panel.addEventListener('pointerup',end);
-    panel.addEventListener('pointercancel',end);
-  });
-
-  // Resize
-  const handle=panel.querySelector('.free-resize-corner');
-  handle.addEventListener('pointerdown',e=>{
-    if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900)return;
-    e.preventDefault();e.stopPropagation();
-    const sx=e.clientX,sy=e.clientY,sw=panel.offsetWidth,sh=panel.offsetHeight,pid=e.pointerId;
-    try{handle.setPointerCapture(pid)}catch(_){}
-    const move=ev=>{
-      if(ev.pointerId!==pid)return;
-      panel.style.width=Math.max(360,Math.round((sw+ev.clientX-sx)/10)*10)+'px';
-      panel.style.height=Math.max(180,Math.round((sh+ev.clientY-sy)/10)*10)+'px';
-    };
-    const end=ev=>{
-      if(ev.pointerId!==pid)return;
-      handle.removeEventListener('pointermove',move);
-      handle.removeEventListener('pointerup',end);
-      handle.removeEventListener('pointercancel',end);
-      savePanel();
-    };
-    handle.addEventListener('pointermove',move);
-    handle.addEventListener('pointerup',end);
-    handle.addEventListener('pointercancel',end);
-  });
-
-  panel.querySelector('.free-card-close').addEventListener('click',e=>{
-    e.stopPropagation();
-    panel.style.display='none';
-    savePanel();
-  });
-
-  renderPanel();
-  setInterval(renderPanel,2000);
-
-  // Ensure canvas is tall enough so the panel is visible and scrollable.
-  const bottom=(parseFloat(panel.style.top)||0)+panel.offsetHeight+40;
-  const current=parseFloat(canvas.style.height)||canvas.offsetHeight||0;
-  if(bottom>current)canvas.style.height=bottom+'px';
-}
-
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(addPanel,250));
-else setTimeout(addPanel,250);
-})();
+setInterval(()=>{try{renderNativeInterventions(db())}catch(_){}},2000);
