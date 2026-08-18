@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.12.9';
-const DASHBOARD_BUILD='2026-08-18 12:49';
+const DASHBOARD_VERSION='V1.13.0';
+const DASHBOARD_BUILD='2026-08-18 21:12';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -1231,4 +1231,24 @@ if(document.readyState==='loading'){
 }else{
   setTimeout(addNativeInterventionsToCanvas,350);
 }
+})();
+
+/* V1.13.0 - classement couleur des cases */
+(function(){
+ const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ function apply(){
+  document.querySelectorAll('.dashboard-free-card').forEach(c=>{
+   c.classList.remove('theme-red','theme-blue','theme-green','theme-orange','theme-grey');
+   const t=norm(c.dataset.freeTitle||c.querySelector('.kpi-title,.panel-head h2,.panel-head h3,h2,h3')?.textContent||c.id);
+   let k='theme-grey';
+   if(/urgence|retard|controle periodique/.test(t)) k='theme-red';
+   else if(/intervention|planning|evolution/.test(t)) k='theme-blue';
+   else if(/presence|agent|conformite|mise a jour/.test(t)) k='theme-green';
+   else if(/charge|repartition/.test(t)) k='theme-orange';
+   c.classList.add(k);
+  });
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(apply,500));
+ else setTimeout(apply,500);
+ setInterval(apply,3000);
 })();

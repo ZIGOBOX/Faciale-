@@ -680,3 +680,27 @@ body.free-layout-editing main{overflow:visible!important}
 #interventionsNativePanel .native-interventions-list{
   height:calc(100% - 34px)!important;
 }
+
+/* V1.13.0 - bordures rayees par famille */
+.dashboard-free-card{
+ --stripe:#64748b;--stripe2:#263238;
+ position:absolute;
+ border:7px solid transparent!important;
+ border-radius:10px!important;
+ background:
+   linear-gradient(#fff,#fff) padding-box,
+   repeating-linear-gradient(45deg,var(--stripe) 0 12px,var(--stripe2) 12px 24px) border-box!important;
+ box-shadow:0 1px 5px rgba(15,35,55,.13)!important;
+}
+.dashboard-free-card.theme-red{--stripe:#ef3038;--stripe2:#34383b}
+.dashboard-free-card.theme-blue{--stripe:#168bd2;--stripe2:#34383b}
+.dashboard-free-card.theme-green{--stripe:#10a69a;--stripe2:#34383b}
+.dashboard-free-card.theme-orange{--stripe:#f5a000;--stripe2:#34383b}
+.dashboard-free-card.theme-grey{--stripe:#738291;--stripe2:#34383b}
+body.free-layout-editing .dashboard-free-card{outline:2px dashed var(--stripe)!important;outline-offset:2px}
+@media(max-width:899px){
+ .free-layout-canvas>.dashboard-free-card{
+   position:relative!important;
+   border-width:5px!important;
+ }
+}
