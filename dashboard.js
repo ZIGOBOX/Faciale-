@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.10.8';
-const DASHBOARD_BUILD='2026-08-18 09:02';
+const DASHBOARD_VERSION='V1.11.0';
+const DASHBOARD_BUILD='2026-08-18 09:25';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -823,21 +823,13 @@ renderCustomLinks();
 
 
 
-/* ---------- ORGANISATION PAR ITEM V1.10.8 ---------- */
-const ITEM_LAYOUT_KEY='pst_dashboard_item_layout_v1108';
-let itemLayoutEditing=false;
 
-function slugifyLayout(s){
-  return String(s||'item').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,45)||'item';
-}
-function itemTitle(el){
-  return el.dataset.itemTitle ||
-    el.querySelector('.kpi-title,h2,h3,.panel-head h2,.panel-head h3')?.textContent?.trim() ||
-    el.querySelector('b,strong')?.textContent?.trim() ||
-    'Case';
-}
-function registerLayoutItems(){
+/* ---------- ORGANISATION PAR CASE V1.10.9 ---------- */
+(function(){
+const KEY='pst_dashboard_cases_v1109';
+let editing=false;
+
+function allCases(){
   const selectors=[
     '.kpi-grid > .kpi',
     '.agent-now-panel',
@@ -846,150 +838,128 @@ function registerLayoutItems(){
     '.links-panel',
     '.footer-tools'
   ];
-  const items=[];
-  selectors.forEach(sel=>document.querySelectorAll(sel).forEach((el,index)=>{
-    if(el.classList.contains('layout-item')){items.push(el);return}
-    el.classList.add('layout-item');
-    const parentKey=el.parentElement?.className?.split(/\s+/)[0]||'main';
-    const title=itemTitle(el);
-    el.dataset.itemTitle=title;
-    if(!el.dataset.layoutId){
-      let id=`${parentKey}-${slugifyLayout(title)}`;
-      let n=2,base=id;
-      while(document.querySelector(`[data-layout-id="${CSS.escape(id)}"]`)){id=`${base}-${n++}`}
-      el.dataset.layoutId=id;
-    }
-    items.push(el);
-  }));
-  return items;
+  const out=[];
+  selectors.forEach(sel=>document.querySelectorAll(sel).forEach(el=>{if(!out.includes(el))out.push(el)}));
+  return out;
 }
-function layoutItems(){return [...document.querySelectorAll('.layout-item')]}
-function loadItemLayout(){
-  try{
-    const x=JSON.parse(localStorage.getItem(ITEM_LAYOUT_KEY)||'{}');
-    return x&&typeof x==='object'?x:{};
-  }catch(_){return{}}
+function titleOf(el){
+  const t=el.querySelector('.kpi-title,h2,h3,.panel-head h2,.panel-head h3,b,strong');
+  return (t&&t.textContent.trim())||'Case';
 }
-function saveItemLayout(){
+function makeId(el,index){
+  const parent=el.parentElement;
+  const p=[...parent.children].indexOf(el);
+  return (parent.className.split(/\s+/)[0]||'main')+'-'+p+'-'+index;
+}
+function load(){
+  try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return{}}
+}
+function store(){
   const state={};
-  layoutItems().forEach((el)=>{
-    const id=el.dataset.layoutId;
-    const parent=el.parentElement;
-    const siblings=[...parent.children].filter(x=>x.classList?.contains('layout-item'));
-    state[id]={
-      parentKey:parent.className?.split(/\s+/)[0]||'main',
+  allCases().forEach(el=>{
+    const siblings=allCases().filter(x=>x.parentElement===el.parentElement);
+    state[el.dataset.caseId]={
       order:siblings.indexOf(el),
-      hidden:el.classList.contains('is-hidden'),
-      size:el.classList.contains('is-full')?'full':el.classList.contains('is-wide')?'wide':el.classList.contains('is-compact')?'compact':'normal'
+      hidden:el.classList.contains('case-hidden'),
+      size:el.classList.contains('case-full')?'full':el.classList.contains('case-wide')?'wide':el.classList.contains('case-compact')?'compact':'normal'
     };
   });
-  try{localStorage.setItem(ITEM_LAYOUT_KEY,JSON.stringify(state))}catch(_){}
-  renderItemHiddenTray();
+  localStorage.setItem(KEY,JSON.stringify(state));
+  drawTray();
 }
-function ensureItemTools(el){
-  if(el.querySelector(':scope > .item-layout-tools'))return;
-  const box=document.createElement('div');
-  box.className='item-layout-tools';
-  box.innerHTML=`
-    <button type="button" data-item-action="up" title="Monter">↑</button>
-    <button type="button" data-item-action="down" title="Descendre">↓</button>
-    <button type="button" data-item-action="size" title="Taille : normal / large / pleine largeur / compact">↔</button>
-    <button type="button" class="item-close" data-item-action="hide" title="Masquer cette case">×</button>`;
-  el.appendChild(box);
+function toolsFor(el){
+  if(el.querySelector('.case-tools'))return;
+  const t=document.createElement('div');
+  t.className='case-tools';
+  t.innerHTML=
+    '<button type="button" data-ca="up" class="case-up" title="Monter cette case">↑ MONTER</button>'+
+    '<button type="button" data-ca="down" class="case-down" title="Descendre cette case">↓ DESCENDRE</button>'+
+    '<button type="button" data-ca="size" class="case-size" title="Changer la taille">↔ TAILLE</button>'+
+    '<button type="button" data-ca="hide" class="case-x" title="Masquer cette case">× MASQUER</button>';
+  el.appendChild(t);
 }
-function applyItemLayout(){
-  const items=registerLayoutItems();
-  items.forEach(ensureItemTools);
-  const state=loadItemLayout();
-
-  // Apply visual state first
-  items.forEach(el=>{
-    const s=state[el.dataset.layoutId]||{};
-    el.classList.toggle('is-hidden',!!s.hidden);
-    el.classList.toggle('is-wide',s.size==='wide');
-    el.classList.toggle('is-full',s.size==='full');
-    el.classList.toggle('is-compact',s.size==='compact');
-  });
-
-  // Apply order inside each native group only: no data or DOM section is mixed with another section
-  const parents=[...new Set(items.map(x=>x.parentElement))];
-  parents.forEach(parent=>{
-    const group=[...parent.children].filter(x=>x.classList?.contains('layout-item'));
-    group.sort((a,b)=>(state[a.dataset.layoutId]?.order??999)-(state[b.dataset.layoutId]?.order??999));
-    group.forEach(x=>parent.appendChild(x));
-  });
-
-  ensureItemHiddenTray();
-  renderItemHiddenTray();
-}
-function ensureItemHiddenTray(){
-  let tray=document.getElementById('itemHiddenTray');
-  if(tray)return tray;
-  tray=document.createElement('div');
-  tray.id='itemHiddenTray';
-  tray.className='item-hidden-tray';
-  const main=document.querySelector('main');
-  main?.appendChild(tray);
-  return tray;
-}
-function renderItemHiddenTray(){
-  const tray=ensureItemHiddenTray();if(!tray)return;
-  const hidden=layoutItems().filter(x=>x.classList.contains('is-hidden'));
-  tray.innerHTML=`<strong>Cases masquées :</strong>${hidden.length
-    ? hidden.map(x=>`<button type="button" data-item-restore="${esc(x.dataset.layoutId)}">+ ${esc(x.dataset.itemTitle)}</button>`).join('')
-    : '<span style="font-size:8px;color:#7b8995">aucune</span>'}`;
-}
-function moveItem(el,delta){
-  const parent=el.parentElement;
-  const items=[...parent.children].filter(x=>x.classList?.contains('layout-item')&&!x.classList.contains('is-hidden'));
-  const i=items.indexOf(el),j=i+delta;
-  if(i<0||j<0||j>=items.length)return;
-  if(delta<0)parent.insertBefore(el,items[j]);
-  else parent.insertBefore(items[j],el);
-  saveItemLayout();
-}
-function cycleItemSize(el){
-  const modes=['normal','wide','full','compact'];
-  let current=el.classList.contains('is-full')?'full':el.classList.contains('is-wide')?'wide':el.classList.contains('is-compact')?'compact':'normal';
-  const next=modes[(modes.indexOf(current)+1)%modes.length];
-  el.classList.remove('is-wide','is-full','is-compact');
-  if(next!=='normal')el.classList.add(`is-${next}`);
-  saveItemLayout();
-}
-function setItemLayoutEditing(on){
-  itemLayoutEditing=!!on;
-  document.body.classList.toggle('layout-editing',itemLayoutEditing);
-  const b=document.getElementById('layoutEditBtn');
-  if(b){b.classList.toggle('active',itemLayoutEditing);b.textContent=itemLayoutEditing?'✓ Terminer':'⚙ Organiser'}
-  const r=document.getElementById('layoutResetBtn');if(r)r.hidden=!itemLayoutEditing;
-  renderItemHiddenTray();
-}
-document.addEventListener('click',e=>{
-  if(e.target.closest('#layoutEditBtn')){
-    setItemLayoutEditing(!itemLayoutEditing);return;
-  }
-  if(e.target.closest('#layoutResetBtn')){
-    if(confirm("Réinitialiser toutes les cases du dashboard ?")){
-      try{localStorage.removeItem(ITEM_LAYOUT_KEY)}catch(_){}
-      location.reload();
+function setup(){
+  const state=load();
+  const cases=allCases();
+  cases.forEach((el,i)=>{
+    el.classList.add('dashboard-case');
+    el.dataset.caseId=el.dataset.caseId||makeId(el,i);
+    el.dataset.caseTitle=titleOf(el);
+    toolsFor(el);
+    const s=state[el.dataset.caseId];
+    if(s){
+      el.classList.toggle('case-hidden',!!s.hidden);
+      el.classList.toggle('case-wide',s.size==='wide');
+      el.classList.toggle('case-full',s.size==='full');
+      el.classList.toggle('case-compact',s.size==='compact');
     }
-    return;
-  }
-  const restore=e.target.closest('[data-item-restore]');
-  if(restore){
-    const id=restore.dataset.itemRestore;
-    const el=layoutItems().find(x=>x.dataset.layoutId===id);
-    if(el){el.classList.remove('is-hidden');saveItemLayout()}
-    return;
-  }
-  if(!itemLayoutEditing)return;
-  const action=e.target.closest('[data-item-action]');
-  if(!action)return;
-  const el=action.closest('.layout-item');if(!el)return;
-  const what=action.dataset.itemAction;
-  if(what==='up')moveItem(el,-1);
-  else if(what==='down')moveItem(el,1);
-  else if(what==='size')cycleItemSize(el);
-  else if(what==='hide'){el.classList.add('is-hidden');saveItemLayout()}
-});
-applyItemLayout();
+  });
+  const parents=[...new Set(cases.map(x=>x.parentElement))];
+  parents.forEach(parent=>{
+    const group=cases.filter(x=>x.parentElement===parent);
+    group.sort((a,b)=>(state[a.dataset.caseId]?.order??999)-(state[b.dataset.caseId]?.order??999));
+    group.forEach(el=>parent.appendChild(el));
+  });
+  tray();
+  drawTray();
+}
+function tray(){
+  let t=document.getElementById('caseTray');
+  if(t)return t;
+  t=document.createElement('div');t.id='caseTray';t.className='case-tray';
+  document.querySelector('main')?.appendChild(t);
+  return t;
+}
+function drawTray(){
+  const t=tray(); if(!t)return;
+  const hidden=allCases().filter(x=>x.classList.contains('case-hidden'));
+  t.innerHTML='<strong>Cases masquées :</strong> '+(hidden.length
+    ? hidden.map(x=>'<button type="button" data-restore="'+x.dataset.caseId+'">+ '+x.dataset.caseTitle+'</button>').join(' ')
+    : '<span>aucune</span>');
+}
+function setEditing(v){
+  editing=v;
+  document.body.classList.toggle('case-editing',v);
+  const b=document.getElementById('layoutEditBtn');
+  if(b){b.classList.toggle('active',v);b.textContent=v?'✓ Terminer':'⚙ Organiser'}
+  const r=document.getElementById('layoutResetBtn');if(r)r.hidden=!v;
+  drawTray();
+}
+function move(el,dir){
+  const group=allCases().filter(x=>x.parentElement===el.parentElement&&!x.classList.contains('case-hidden'));
+  const i=group.indexOf(el),j=i+dir;if(i<0||j<0||j>=group.length)return;
+  if(dir<0)el.parentElement.insertBefore(el,group[j]);
+  else el.parentElement.insertBefore(group[j],el);
+  store();
+}
+function size(el){
+  const modes=['normal','wide','full','compact'];
+  const cur=el.classList.contains('case-full')?'full':el.classList.contains('case-wide')?'wide':el.classList.contains('case-compact')?'compact':'normal';
+  const next=modes[(modes.indexOf(cur)+1)%modes.length];
+  el.classList.remove('case-wide','case-full','case-compact');
+  if(next!=='normal')el.classList.add('case-'+next);
+  store();
+}
+function click(e){
+  const edit=e.target.closest('#layoutEditBtn');
+  if(edit){e.preventDefault();setEditing(!editing);return}
+  const reset=e.target.closest('#layoutResetBtn');
+  if(reset){e.preventDefault();if(confirm("Remettre toutes les cases comme à l'origine ?")){localStorage.removeItem(KEY);location.reload()}return}
+  const restore=e.target.closest('[data-restore]');
+  if(restore){e.preventDefault();const el=allCases().find(x=>x.dataset.caseId===restore.dataset.restore);if(el){el.classList.remove('case-hidden');store()}return}
+  if(!editing)return;
+  const btn=e.target.closest('[data-ca]');if(!btn)return;
+  e.preventDefault();e.stopPropagation();
+  const el=btn.closest('.dashboard-case');if(!el)return;
+  if(btn.dataset.ca==='up')move(el,-1);
+  if(btn.dataset.ca==='down')move(el,1);
+  if(btn.dataset.ca==='size')size(el);
+  if(btn.dataset.ca==='hide'){el.classList.add('case-hidden');store()}
+}
+function init(){
+  setup();
+  document.addEventListener('click',click,true);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+else init();
+})();

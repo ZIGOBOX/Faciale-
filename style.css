@@ -576,3 +576,101 @@ body.layout-editing .item-hidden-tray{display:flex}
   .item-layout-tools button{min-width:34px;height:34px}
   body.layout-editing main{padding-top:45px}
 }
+
+/* V1.10.9 — correctif commandes par case */
+.case-editing .dashboard-case{position:relative!important;outline:2px dashed #2f80ed!important;outline-offset:-2px!important}
+.case-tools{display:none!important;position:absolute!important;right:5px!important;top:5px!important;z-index:9999!important;background:#fff!important;border:1px solid #b8cadd!important;border-radius:8px!important;padding:3px!important;gap:3px!important;box-shadow:0 2px 8px rgba(0,0,0,.15)!important}
+.case-editing .case-tools{display:flex!important}
+.case-tools button{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:30px!important;height:30px!important;border:1px solid #c5d3df!important;border-radius:6px!important;background:#fff!important;color:#264760!important;font-size:16px!important;font-weight:900!important;cursor:pointer!important;pointer-events:auto!important}
+.case-tools .case-x{background:#fff0f1!important;color:#b22532!important;border-color:#efc1c6!important}
+.dashboard-case.case-hidden{display:none!important}
+.dashboard-case.case-wide{grid-column:span 2!important}
+.dashboard-case.case-full{grid-column:1/-1!important}
+.dashboard-case.case-compact{max-height:125px!important;min-height:70px!important;overflow:auto!important}
+.case-tray{display:none;margin:8px 0;padding:8px;border:1px dashed #93aec4;border-radius:8px;background:#f5f9fc;font-size:9px}
+.case-editing .case-tray{display:block}
+.case-tray button{margin:3px;border:1px solid #c5d3df;border-radius:6px;background:#fff;padding:5px 8px;font-weight:800;color:#315b82;cursor:pointer}
+@media(max-width:999px){.dashboard-case.case-wide,.dashboard-case.case-full{grid-column:1/-1!important}.case-tools button{width:36px!important;height:36px!important}}
+
+/* V1.11.0 — COMMANDES TRÈS VISIBLES */
+.case-editing .dashboard-case{
+  overflow:visible!important;
+  position:relative!important;
+  padding-top:42px!important;
+  outline:3px solid #2f80ed!important;
+  outline-offset:-3px!important;
+}
+.case-editing .dashboard-case > .case-tools{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  position:absolute!important;
+  top:4px!important;
+  left:4px!important;
+  right:4px!important;
+  height:34px!important;
+  z-index:2147483000!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:5px!important;
+  padding:3px 5px!important;
+  background:#153a5b!important;
+  border:2px solid #ffffff!important;
+  border-radius:7px!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.28)!important;
+}
+.case-editing .dashboard-case > .case-tools button{
+  width:auto!important;
+  min-width:78px!important;
+  height:27px!important;
+  padding:0 8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:1px solid rgba(255,255,255,.7)!important;
+  border-radius:5px!important;
+  background:#ffffff!important;
+  color:#173d5e!important;
+  font-size:10px!important;
+  font-weight:1000!important;
+  line-height:1!important;
+  cursor:pointer!important;
+  pointer-events:auto!important;
+  white-space:nowrap!important;
+}
+.case-editing .dashboard-case > .case-tools .case-size{
+  background:#eaf4ff!important;
+  color:#145a96!important;
+}
+.case-editing .dashboard-case > .case-tools .case-x{
+  background:#ffe9eb!important;
+  color:#b32230!important;
+  border-color:#ffb6be!important;
+}
+.case-editing .dashboard-case > .case-tools button:hover{
+  transform:translateY(-1px)!important;
+  box-shadow:0 2px 5px rgba(0,0,0,.15)!important;
+}
+.case-editing main,
+.case-editing .kpi-grid,
+.case-editing .middle-grid,
+.case-editing .bottom-grid{
+  overflow:visible!important;
+}
+@media(max-width:1100px){
+  .case-editing .dashboard-case{
+    padding-top:76px!important;
+  }
+  .case-editing .dashboard-case > .case-tools{
+    height:68px!important;
+    flex-wrap:wrap!important;
+    justify-content:flex-start!important;
+    align-content:center!important;
+  }
+  .case-editing .dashboard-case > .case-tools button{
+    min-width:110px!important;
+    height:28px!important;
+    font-size:9px!important;
+  }
+}
