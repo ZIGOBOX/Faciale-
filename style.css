@@ -646,3 +646,37 @@ body.free-layout-editing main{overflow:visible!important}
 .oi-sub{margin-top:2px;font-size:8px;color:#748493}
 .oi-status{position:absolute;right:7px;top:10px;padding:3px 6px;border-radius:10px;background:#eaf4ff;color:#2670ad;font-size:7px;font-weight:900}
 .oi-empty{padding:15px;color:#778896;font-size:9px;font-style:italic}
+
+/* V1.12.3 — interventions ouvertes visibles */
+.open-interventions-panel{
+  background:#fff!important;
+  border:2px solid #2f80ed!important;
+  border-radius:10px!important;
+  overflow:auto!important;
+}
+.oi-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:9px 12px;
+  border-bottom:1px solid #e5ebf0;
+  background:#f6faff;
+}
+.oi-head h3{margin:0;font-size:11px;color:#183d5e}
+.oi-count{
+  min-width:28px;height:28px;border-radius:50%;
+  display:grid;place-items:center;background:#2f80ed;color:#fff;font-size:12px
+}
+.oi-list{height:calc(100% - 48px);overflow:auto;padding:4px 8px}
+.oi-row{
+  display:flex;justify-content:space-between;gap:8px;
+  padding:8px 5px;border-bottom:1px solid #edf1f4
+}
+.oi-text{min-width:0}
+.oi-text b{display:block;font-size:10px;color:#23394d}
+.oi-text small{display:block;margin-top:2px;font-size:8px;color:#748493;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oi-badges{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.oi-status,.oi-priority{padding:3px 6px;border-radius:10px;font-size:7px;font-weight:900}
+.oi-status{background:#eaf4ff;color:#256da9}
+.oi-priority{background:#fff1e5;color:#b45b00}
+.oi-empty{padding:14px;color:#7b8894;font-size:9px;font-style:italic}

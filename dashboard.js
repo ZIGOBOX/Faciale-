@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.12.2';
-const DASHBOARD_BUILD='2026-08-18 10:05';
+const DASHBOARD_VERSION='V1.12.3';
+const DASHBOARD_BUILD='2026-08-18 10:15';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -1093,98 +1093,132 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else init();
 })();
 
-/* ===== V1.12.2 — LISTE DES INTERVENTIONS OUVERTES ===== */
-(function(){
-function esc2(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function arr(v){return Array.isArray(v)?v:[]}
-function findOpenInterventions(){
-  const pools=[];
-  // Known/global candidate containers, without changing the existing synchronisation.
-  ['interventions','INTERVENTIONS','interventionsData','allInterventions','pilotageInterventions'].forEach(k=>{
-    try{if(Array.isArray(window[k]))pools.push(window[k])}catch(_){}
-  });
-  try{
-    if(window.DATA){
-      ['interventions','actions','items'].forEach(k=>{if(Array.isArray(window.DATA[k]))pools.push(window.DATA[k])});
-    }
-  }catch(_){}
-  try{
-    if(window.state){
-      ['interventions','actions'].forEach(k=>{if(Array.isArray(window.state[k]))pools.push(window.state[k])});
-    }
-  }catch(_){}
 
-  let list=pools.sort((a,b)=>b.length-a.length)[0]||[];
-  return list.filter(x=>{
-    const s=String(x.statut??x.status??x.etat??x.state??'').toLowerCase();
-    const closed=/clos|ferm|termin|résolu|resolu|fait|done|annul/.test(s);
-    return !closed;
-  });
+/* ===== V1.12.3 — INTERVENTIONS OUVERTES VISIBLES ===== */
+(function(){
+const PANEL_ID='openInterventionsPanelV123';
+const STORE='pst_open_interventions_panel_v123';
+
+function getPilotageData(){
+  try{
+    if(typeof db==='function'){
+      const d=db();
+      if(d)return d;
+    }
+  }catch(_){}
+  try{
+    const frame=document.getElementById('pilotageSource');
+    const live=frame?.contentWindow?.PSTMainState?.get?.();
+    if(live)return live;
+  }catch(_){}
+  return null;
 }
-function textOf(x){
-  return x.titre??x.title??x.objet??x.libelle??x.label??x.description??x.nom??'Intervention';
+function isClosed(v){
+  const s=String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return /(clotur|ferme|termine|resolu|annule|archive|realise)/.test(s);
 }
-function subOf(x){
-  const parts=[
-    x.domaine??x.categorie??x.category,
-    x.lieu??x.location??x.salle,
-    x.agent??x.assigneA??x.assignee,
-    x.date??x.created_at??x.dateCreation
-  ].filter(Boolean);
-  return parts.join(' • ');
+function openInterventions(){
+  const d=getPilotageData();
+  if(!d)return [];
+  const rows=Array.isArray(d.maintenance)?d.maintenance:
+             Array.isArray(d.interventions)?d.interventions:[];
+  return rows.filter(x=>!isClosed(x.status||x.statut||x.state));
 }
-function renderOpenInterventions(){
-  const host=document.getElementById('openInterventionsList');
-  if(!host)return;
-  const list=findOpenInterventions();
-  if(!list.length){
-    host.innerHTML='<div class="oi-empty">Aucune intervention ouverte détaillée trouvée dans les données actuellement exposées.</div>';
+function escv(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderPanel(){
+  const panel=document.getElementById(PANEL_ID);
+  const list=panel?.querySelector('.oi-list');
+  const count=panel?.querySelector('.oi-count');
+  if(!panel||!list)return;
+  const rows=openInterventions();
+  if(count)count.textContent=String(rows.length);
+  if(!rows.length){
+    list.innerHTML='<div class="oi-empty">Aucune intervention ouverte.</div>';
     return;
   }
-  host.innerHTML=list.map(x=>`
-    <div class="oi-row">
-      <div class="oi-main">${esc2(textOf(x))}</div>
-      <div class="oi-sub">${esc2(subOf(x))}</div>
-      <span class="oi-status">${esc2(x.statut??x.status??x.etat??'Ouverte')}</span>
-    </div>`).join('');
+  list.innerHTML=rows.map(x=>{
+    const title=x.title||x.titre||x.subject||x.no||x.numero||'Intervention';
+    const details=[
+      x.family||x.category||x.categorie,
+      x.building||x.batiment,
+      x.floor||x.etage,
+      x.room||x.salle,
+      x.owner||x.agent||x.assignedTo
+    ].filter(Boolean).join(' • ');
+    const status=x.status||x.statut||'Ouverte';
+    const priority=x.priority||x.priorite||'';
+    return `<div class="oi-row">
+      <div class="oi-text">
+        <b>${escv(title)}</b>
+        <small>${escv(details)}</small>
+      </div>
+      <div class="oi-badges">
+        ${priority?`<span class="oi-priority">${escv(priority)}</span>`:''}
+        <span class="oi-status">${escv(status)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function savePanel(){
+  const p=document.getElementById(PANEL_ID);if(!p)return;
+  try{
+    localStorage.setItem(STORE,JSON.stringify({
+      x:parseFloat(p.style.left)||0,
+      y:parseFloat(p.style.top)||0,
+      w:p.offsetWidth,
+      h:p.offsetHeight,
+      hidden:p.style.display==='none'
+    }));
+  }catch(_){}
+}
+function loadPanelState(p){
+  try{
+    const s=JSON.parse(localStorage.getItem(STORE)||'null');
+    if(!s)return false;
+    p.style.left=(Number(s.x)||20)+'px';
+    p.style.top=(Number(s.y)||520)+'px';
+    p.style.width=Math.max(360,Number(s.w)||620)+'px';
+    p.style.height=Math.max(180,Number(s.h)||300)+'px';
+    if(s.hidden)p.style.display='none';
+    return true;
+  }catch(_){return false}
 }
 function addPanel(){
   const canvas=document.getElementById('freeLayoutCanvas');
-  if(!canvas || document.getElementById('openInterventionsPanel'))return;
+  if(!canvas||document.getElementById(PANEL_ID))return;
 
   const panel=document.createElement('section');
-  panel.id='openInterventionsPanel';
-  panel.className='panel dashboard-free-card';
-  panel.dataset.freeId='interventions-ouvertes-detail';
+  panel.id=PANEL_ID;
+  panel.className='dashboard-free-card open-interventions-panel';
+  panel.dataset.freeId='interventions-ouvertes-v123';
   panel.dataset.freeTitle='Interventions ouvertes';
   panel.dataset.hidden='0';
   panel.innerHTML=`
-    <div class="panel-head"><h3>INTERVENTIONS OUVERTES</h3></div>
-    <div id="openInterventionsList" class="open-interventions-list"></div>
-    <button type="button" class="free-card-close" title="Masquer cette case">×</button>
+    <div class="oi-head">
+      <h3>INTERVENTIONS OUVERTES</h3>
+      <strong class="oi-count">0</strong>
+    </div>
+    <div class="oi-list"></div>
+    <button type="button" class="free-card-close" title="Masquer">×</button>
     <div class="free-resize-corner" title="Tirer pour redimensionner">↘</div>`;
 
-  // Put it below current cards on first load.
-  let bottom=0;
-  [...canvas.children].forEach(el=>{
-    if(!el.classList.contains('dashboard-free-card') || el.dataset.hidden==='1')return;
-    bottom=Math.max(bottom,(parseFloat(el.style.top)||0)+(parseFloat(el.style.height)||el.offsetHeight));
-  });
-  panel.style.left='0px';
-  panel.style.top=(Math.round((bottom+20)/10)*10)+'px';
-  panel.style.width=Math.min(620,Math.max(360,canvas.clientWidth*.48))+'px';
-  panel.style.height='260px';
-  panel.style.zIndex='1';
   canvas.appendChild(panel);
 
-  // Integrate with V1.12.1's free controls by dispatching local pointer logic.
-  let editing=()=>document.body.classList.contains('free-layout-editing');
-  let z=200;
+  // Position visible by default, directly under the first dashboard rows.
+  if(!loadPanelState(panel)){
+    panel.style.left='20px';
+    panel.style.top='520px';
+    panel.style.width='620px';
+    panel.style.height='300px';
+  }
+  panel.style.zIndex='5';
+
+  // Drag
   panel.addEventListener('pointerdown',e=>{
-    if(!editing()||window.innerWidth<900||e.button!==0||e.target.closest('button,.free-resize-corner'))return;
+    if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900||e.button!==0||e.target.closest('button,.free-resize-corner'))return;
     e.preventDefault();
-    panel.style.zIndex=String(++z);
-    const sx=e.clientX,sy=e.clientY,ox=parseFloat(panel.style.left)||0,oy=parseFloat(panel.style.top)||0;
+    const sx=e.clientX, sy=e.clientY;
+    const ox=parseFloat(panel.style.left)||0, oy=parseFloat(panel.style.top)||0;
     const pid=e.pointerId;
     try{panel.setPointerCapture(pid)}catch(_){}
     const move=ev=>{
@@ -1194,49 +1228,55 @@ function addPanel(){
     };
     const end=ev=>{
       if(ev.pointerId!==pid)return;
-      panel.removeEventListener('pointermove',move);panel.removeEventListener('pointerup',end);panel.removeEventListener('pointercancel',end);
-      saveOwn();
+      panel.removeEventListener('pointermove',move);
+      panel.removeEventListener('pointerup',end);
+      panel.removeEventListener('pointercancel',end);
+      savePanel();
     };
-    panel.addEventListener('pointermove',move);panel.addEventListener('pointerup',end);panel.addEventListener('pointercancel',end);
+    panel.addEventListener('pointermove',move);
+    panel.addEventListener('pointerup',end);
+    panel.addEventListener('pointercancel',end);
   });
-  const rh=panel.querySelector('.free-resize-corner');
-  rh.addEventListener('pointerdown',e=>{
-    if(!editing()||window.innerWidth<900)return;
+
+  // Resize
+  const handle=panel.querySelector('.free-resize-corner');
+  handle.addEventListener('pointerdown',e=>{
+    if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900)return;
     e.preventDefault();e.stopPropagation();
     const sx=e.clientX,sy=e.clientY,sw=panel.offsetWidth,sh=panel.offsetHeight,pid=e.pointerId;
-    try{rh.setPointerCapture(pid)}catch(_){}
+    try{handle.setPointerCapture(pid)}catch(_){}
     const move=ev=>{
       if(ev.pointerId!==pid)return;
-      panel.style.width=Math.max(260,Math.round((sw+ev.clientX-sx)/10)*10)+'px';
-      panel.style.height=Math.max(120,Math.round((sh+ev.clientY-sy)/10)*10)+'px';
+      panel.style.width=Math.max(360,Math.round((sw+ev.clientX-sx)/10)*10)+'px';
+      panel.style.height=Math.max(180,Math.round((sh+ev.clientY-sy)/10)*10)+'px';
     };
-    const end=ev=>{if(ev.pointerId!==pid)return;rh.removeEventListener('pointermove',move);rh.removeEventListener('pointerup',end);rh.removeEventListener('pointercancel',end);saveOwn()};
-    rh.addEventListener('pointermove',move);rh.addEventListener('pointerup',end);rh.addEventListener('pointercancel',end);
+    const end=ev=>{
+      if(ev.pointerId!==pid)return;
+      handle.removeEventListener('pointermove',move);
+      handle.removeEventListener('pointerup',end);
+      handle.removeEventListener('pointercancel',end);
+      savePanel();
+    };
+    handle.addEventListener('pointermove',move);
+    handle.addEventListener('pointerup',end);
+    handle.addEventListener('pointercancel',end);
   });
+
   panel.querySelector('.free-card-close').addEventListener('click',e=>{
-    e.stopPropagation();panel.dataset.hidden='1';panel.style.display='none';saveOwn();
+    e.stopPropagation();
+    panel.style.display='none';
+    savePanel();
   });
 
-  function saveOwn(){
-    try{
-      const key='pst_dashboard_open_interventions_v1122';
-      localStorage.setItem(key,JSON.stringify({
-        x:parseFloat(panel.style.left)||0,y:parseFloat(panel.style.top)||0,
-        w:panel.offsetWidth,h:panel.offsetHeight,hidden:panel.dataset.hidden==='1'
-      }));
-    }catch(_){}
-  }
-  try{
-    const s=JSON.parse(localStorage.getItem('pst_dashboard_open_interventions_v1122')||'null');
-    if(s){
-      panel.style.left=s.x+'px';panel.style.top=s.y+'px';panel.style.width=s.w+'px';panel.style.height=s.h+'px';
-      if(s.hidden){panel.dataset.hidden='1';panel.style.display='none'}
-    }
-  }catch(_){}
+  renderPanel();
+  setInterval(renderPanel,2000);
 
-  renderOpenInterventions();
-  setInterval(renderOpenInterventions,5000);
+  // Ensure canvas is tall enough so the panel is visible and scrollable.
+  const bottom=(parseFloat(panel.style.top)||0)+panel.offsetHeight+40;
+  const current=parseFloat(canvas.style.height)||canvas.offsetHeight||0;
+  if(bottom>current)canvas.style.height=bottom+'px';
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(addPanel,100));
-else setTimeout(addPanel,100);
+
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(addPanel,250));
+else setTimeout(addPanel,250);
 })();
