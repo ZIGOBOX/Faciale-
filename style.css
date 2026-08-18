@@ -680,9 +680,3 @@ body.free-layout-editing main{overflow:visible!important}
 .oi-status{background:#eaf4ff;color:#256da9}
 .oi-priority{background:#fff1e5;color:#b45b00}
 .oi-empty{padding:14px;color:#7b8894;font-size:9px;font-style:italic}
-
-/* V1.12.4 — liste complète des interventions À FAIRE */
-.open-interventions-panel .oi-list{scrollbar-width:thin}
-.open-interventions-panel .oi-row{min-height:44px}
-.open-interventions-panel .oi-text b{font-size:10px}
-.open-interventions-panel .oi-text small{white-space:normal;line-height:1.25}

@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.12.5';
-const DASHBOARD_BUILD='2026-08-18 09:56';
+const DASHBOARD_VERSION='V1.12.6';
+const DASHBOARD_BUILD='2026-08-18 10:02';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -1097,7 +1097,7 @@ else init();
 /* ===== V1.12.3 — INTERVENTIONS OUVERTES VISIBLES ===== */
 (function(){
 const PANEL_ID='openInterventionsPanelV123';
-const STORE='pst_interventions_ouvertes_panel_v125';
+const STORE='pst_open_interventions_panel_v123';
 
 function getPilotageData(){
   try{
@@ -1126,11 +1126,11 @@ function openInterventions(){
     return ![
       'cloture','cloturee',
       'termine','terminee',
+      'ferme','fermee',
       'archive','archivee',
       'annule','annulee',
       'realise','realisee',
-      'resolu','resolue',
-      'ferme','fermee'
+      'resolu','resolue'
     ].includes(s);
   });
 }
@@ -1158,7 +1158,7 @@ function renderPanel(){
       x.assigned?`Assigné: ${x.assigned}`:'',
       x.dueDate?`Échéance: ${x.dueDate}`:''
     ].filter(Boolean).join(' • ');
-    const status=x.status||'Ouverte';
+    const status=x.status||x.statut||'Ouverte';
     const priority=x.priority||x.priorite||'';
     return `<div class="oi-row">
       <div class="oi-text">
@@ -1203,7 +1203,7 @@ function addPanel(){
   const panel=document.createElement('section');
   panel.id=PANEL_ID;
   panel.className='dashboard-free-card open-interventions-panel';
-  panel.dataset.freeId='interventions-ouvertes-v125';
+  panel.dataset.freeId='interventions-ouvertes-v123';
   panel.dataset.freeTitle='Interventions ouvertes';
   panel.dataset.hidden='0';
   panel.innerHTML=`
@@ -1222,7 +1222,7 @@ function addPanel(){
     panel.style.left='20px';
     panel.style.top='520px';
     panel.style.width='620px';
-    panel.style.height='360px';
+    panel.style.height='300px';
   }
   panel.style.zIndex='5';
 
