@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.11.1';
-const DASHBOARD_BUILD='2026-08-18 09:35';
+const DASHBOARD_VERSION='V1.11.3';
+const DASHBOARD_BUILD='2026-08-18 09:40';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -820,16 +820,12 @@ document.addEventListener('click',e=>{
 });
 renderCustomLinks();
 
-
-
-
-
-/* ---------- ORGANISATION PAR CASE V1.10.9 ---------- */
+/* ===== ORGANISATION PAR CASE V1.11.3 ===== */
 (function(){
-const KEY='pst_dashboard_cases_v1109';
+const KEY='pst_dashboard_layout_v1113';
 let editing=false;
 
-function allCases(){
+function cases(){
   const selectors=[
     '.kpi-grid > .kpi',
     '.agent-now-panel',
@@ -839,148 +835,160 @@ function allCases(){
     '.footer-tools'
   ];
   const out=[];
-  selectors.forEach(sel=>document.querySelectorAll(sel).forEach(el=>{if(!out.includes(el))out.push(el)}));
+  selectors.forEach(sel=>{
+    document.querySelectorAll(sel).forEach(el=>{
+      if(!out.includes(el))out.push(el);
+    });
+  });
   return out;
 }
-function titleOf(el){
+function title(el){
   const t=el.querySelector('.kpi-title,h2,h3,.panel-head h2,.panel-head h3,b,strong');
-  return (t&&t.textContent.trim())||'Case';
+  return t?.textContent?.trim()||'Case';
 }
-function makeId(el,index){
+function idFor(el,i){
   const parent=el.parentElement;
-  const p=[...parent.children].indexOf(el);
-  return (parent.className.split(/\s+/)[0]||'main')+'-'+p+'-'+index;
+  return `${parent?.className?.split(/\s+/)[0]||'main'}-${[...parent.children].indexOf(el)}-${i}`;
 }
 function load(){
-  try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return{}}
+  try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return{}}
 }
-function store(){
-  const state={};
-  allCases().forEach(el=>{
-    const siblings=allCases().filter(x=>x.parentElement===el.parentElement);
-    state[el.dataset.caseId]={
-      order:siblings.indexOf(el),
-      hidden:el.classList.contains('case-hidden'),
-      size:el.classList.contains('case-full')?'full':el.classList.contains('case-wide')?'wide':el.classList.contains('case-compact')?'compact':'normal',
-      height:Number(el.dataset.caseHeight||0)
-    };
-  });
-  localStorage.setItem(KEY,JSON.stringify(state));
-  drawTray();
+function toolbar(el){
+  if(el.querySelector('.case-toolbar'))return;
+  const box=document.createElement('div');
+  box.className='case-toolbar';
+  box.innerHTML=
+    '<button type="button" data-case-action="up" title="Monter">↑</button>'+
+    '<button type="button" data-case-action="down" title="Descendre">↓</button>'+
+    '<button type="button" data-case-action="width" title="Changer la largeur">↔</button>'+
+    '<button type="button" data-case-action="height-plus" title="Augmenter la hauteur">＋</button>'+
+    '<button type="button" data-case-action="height-minus" title="Réduire la hauteur">−</button>'+
+    '<button type="button" data-case-action="hide" class="case-hide" title="Masquer">×</button>';
+  el.appendChild(box);
 }
-function toolsFor(el){
-  if(el.querySelector('.case-tools'))return;
-  const t=document.createElement('div');
-  t.className='case-tools';
-  t.innerHTML=
-    '<button type="button" data-ca="up" class="case-up" title="Monter cette case">↑ MONTER</button>'+
-    '<button type="button" data-ca="down" class="case-down" title="Descendre cette case">↓ DESCENDRE</button>'+
-    '<button type="button" data-ca="size" class="case-size" title="Changer la largeur">↔ LARGEUR</button>'+
-    '<button type="button" data-ca="height-up" class="case-height-up" title="Augmenter la hauteur">↕ + HAUTEUR</button>'+
-    '<button type="button" data-ca="height-down" class="case-height-down" title="Réduire la hauteur">↕ - HAUTEUR</button>'+
-    '<button type="button" data-ca="hide" class="case-x" title="Masquer cette case">× MASQUER</button>';
-  el.appendChild(t);
+function applyHeight(el,n){
+  n=Math.max(-2,Math.min(4,Number(n||0)));
+  el.dataset.caseHeight=String(n);
+  el.classList.remove('case-hm2','case-hm1','case-h0','case-h1','case-h2','case-h3','case-h4');
+  el.classList.add(n<0?`case-hm${Math.abs(n)}`:`case-h${n}`);
 }
-function setup(){
+function init(){
   const state=load();
-  const cases=allCases();
-  cases.forEach((el,i)=>{
+  const all=cases();
+  all.forEach((el,i)=>{
     el.classList.add('dashboard-case');
-    el.dataset.caseId=el.dataset.caseId||makeId(el,i);
-    el.dataset.caseTitle=titleOf(el);
-    toolsFor(el);
+    el.dataset.caseId=el.dataset.caseId||idFor(el,i);
+    el.dataset.caseTitle=title(el);
+    toolbar(el);
     const s=state[el.dataset.caseId];
     if(s){
       el.classList.toggle('case-hidden',!!s.hidden);
-      el.classList.toggle('case-wide',s.size==='wide');
-      el.classList.toggle('case-full',s.size==='full');
-      el.classList.toggle('case-compact',s.size==='compact');
-      const h=Math.max(-2,Math.min(4,Number(s.height||0)));
-      el.dataset.caseHeight=String(h);
-      applyCaseHeight(el,h);
-    }
+      el.classList.toggle('case-wide',s.width==='wide');
+      el.classList.toggle('case-full',s.width==='full');
+      applyHeight(el,s.height||0);
+    }else applyHeight(el,0);
   });
-  const parents=[...new Set(cases.map(x=>x.parentElement))];
+  // Restore order inside each original group only
+  const parents=[...new Set(all.map(x=>x.parentElement))];
   parents.forEach(parent=>{
-    const group=cases.filter(x=>x.parentElement===parent);
+    const group=all.filter(x=>x.parentElement===parent);
     group.sort((a,b)=>(state[a.dataset.caseId]?.order??999)-(state[b.dataset.caseId]?.order??999));
     group.forEach(el=>parent.appendChild(el));
   });
-  tray();
-  drawTray();
+  ensureTray();
+  renderTray();
+  document.addEventListener('click',handle,true);
 }
-function tray(){
-  let t=document.getElementById('caseTray');
+function save(){
+  const s={};
+  cases().forEach(el=>{
+    const group=cases().filter(x=>x.parentElement===el.parentElement);
+    s[el.dataset.caseId]={
+      order:group.indexOf(el),
+      hidden:el.classList.contains('case-hidden'),
+      width:el.classList.contains('case-full')?'full':el.classList.contains('case-wide')?'wide':'normal',
+      height:Number(el.dataset.caseHeight||0)
+    };
+  });
+  try{localStorage.setItem(KEY,JSON.stringify(s))}catch(_){}
+  renderTray();
+}
+function ensureTray(){
+  let t=document.getElementById('caseHiddenTray');
   if(t)return t;
-  t=document.createElement('div');t.id='caseTray';t.className='case-tray';
+  t=document.createElement('div');
+  t.id='caseHiddenTray';
+  t.className='case-hidden-tray';
   document.querySelector('main')?.appendChild(t);
   return t;
 }
-function drawTray(){
-  const t=tray(); if(!t)return;
-  const hidden=allCases().filter(x=>x.classList.contains('case-hidden'));
-  t.innerHTML='<strong>Cases masquées :</strong> '+(hidden.length
-    ? hidden.map(x=>'<button type="button" data-restore="'+x.dataset.caseId+'">+ '+x.dataset.caseTitle+'</button>').join(' ')
-    : '<span>aucune</span>');
+function renderTray(){
+  const tray=ensureTray();
+  const hidden=cases().filter(x=>x.classList.contains('case-hidden'));
+  tray.innerHTML='<strong>Cases masquées :</strong> '+
+    (hidden.length
+      ? hidden.map(x=>`<button type="button" data-case-restore="${x.dataset.caseId}">+ ${x.dataset.caseTitle}</button>`).join('')
+      : '<span>aucune</span>');
 }
-
-function applyCaseHeight(el,level){
-  level=Math.max(-2,Math.min(4,Number(level||0)));
-  el.dataset.caseHeight=String(level);
-  el.classList.remove('case-hm2','case-hm1','case-h0','case-h1','case-h2','case-h3','case-h4');
-  el.classList.add(level<0?`case-hm${Math.abs(level)}`:`case-h${level}`);
-}
-function changeCaseHeight(el,delta){
-  const current=Number(el.dataset.caseHeight||0);
-  const next=Math.max(-2,Math.min(4,current+delta));
-  applyCaseHeight(el,next);
-  store();
-}
-
 function setEditing(v){
-  editing=v;
-  document.body.classList.toggle('case-editing',v);
+  editing=!!v;
+  document.body.classList.toggle('case-editing',editing);
   const b=document.getElementById('layoutEditBtn');
-  if(b){b.classList.toggle('active',v);b.textContent=v?'✓ Terminer':'⚙ Organiser'}
-  const r=document.getElementById('layoutResetBtn');if(r)r.hidden=!v;
-  drawTray();
+  if(b)b.textContent=editing?'✓ Terminer':'⚙ Organiser';
+  const r=document.getElementById('layoutResetBtn');
+  if(r)r.hidden=!editing;
 }
 function move(el,dir){
-  const group=allCases().filter(x=>x.parentElement===el.parentElement&&!x.classList.contains('case-hidden'));
-  const i=group.indexOf(el),j=i+dir;if(i<0||j<0||j>=group.length)return;
+  const group=cases().filter(x=>x.parentElement===el.parentElement&&!x.classList.contains('case-hidden'));
+  const i=group.indexOf(el),j=i+dir;
+  if(i<0||j<0||j>=group.length)return;
   if(dir<0)el.parentElement.insertBefore(el,group[j]);
   else el.parentElement.insertBefore(group[j],el);
-  store();
+  save();
 }
-function size(el){
-  const modes=['normal','wide','full','compact'];
-  const cur=el.classList.contains('case-full')?'full':el.classList.contains('case-wide')?'wide':el.classList.contains('case-compact')?'compact':'normal';
-  const next=modes[(modes.indexOf(cur)+1)%modes.length];
-  el.classList.remove('case-wide','case-full','case-compact');
-  if(next!=='normal')el.classList.add('case-'+next);
-  store();
+function changeWidth(el){
+  const cur=el.classList.contains('case-full')?'full':el.classList.contains('case-wide')?'wide':'normal';
+  const next=cur==='normal'?'wide':cur==='wide'?'full':'normal';
+  el.classList.remove('case-wide','case-full');
+  if(next==='wide')el.classList.add('case-wide');
+  if(next==='full')el.classList.add('case-full');
+  save();
 }
-function click(e){
+function changeHeight(el,d){
+  applyHeight(el,Number(el.dataset.caseHeight||0)+d);
+  save();
+}
+function handle(e){
   const edit=e.target.closest('#layoutEditBtn');
   if(edit){e.preventDefault();setEditing(!editing);return}
   const reset=e.target.closest('#layoutResetBtn');
-  if(reset){e.preventDefault();if(confirm("Remettre toutes les cases comme à l'origine ?")){localStorage.removeItem(KEY);location.reload()}return}
-  const restore=e.target.closest('[data-restore]');
-  if(restore){e.preventDefault();const el=allCases().find(x=>x.dataset.caseId===restore.dataset.restore);if(el){el.classList.remove('case-hidden');store()}return}
+  if(reset){
+    e.preventDefault();
+    if(confirm("Réinitialiser l'organisation du dashboard ?")){
+      localStorage.removeItem(KEY);
+      location.reload();
+    }
+    return;
+  }
+  const restore=e.target.closest('[data-case-restore]');
+  if(restore){
+    e.preventDefault();
+    const el=cases().find(x=>x.dataset.caseId===restore.dataset.caseRestore);
+    if(el){el.classList.remove('case-hidden');save()}
+    return;
+  }
   if(!editing)return;
-  const btn=e.target.closest('[data-ca]');if(!btn)return;
+  const btn=e.target.closest('[data-case-action]');
+  if(!btn)return;
   e.preventDefault();e.stopPropagation();
   const el=btn.closest('.dashboard-case');if(!el)return;
-  if(btn.dataset.ca==='up')move(el,-1);
-  if(btn.dataset.ca==='down')move(el,1);
-  if(btn.dataset.ca==='size')size(el);
-  if(btn.dataset.ca==='height-up')changeCaseHeight(el,1);
-  if(btn.dataset.ca==='height-down')changeCaseHeight(el,-1);
-  if(btn.dataset.ca==='hide'){el.classList.add('case-hidden');store()}
-}
-function init(){
-  setup();
-  document.addEventListener('click',click,true);
+  const a=btn.dataset.caseAction;
+  if(a==='up')move(el,-1);
+  else if(a==='down')move(el,1);
+  else if(a==='width')changeWidth(el);
+  else if(a==='height-plus')changeHeight(el,1);
+  else if(a==='height-minus')changeHeight(el,-1);
+  else if(a==='hide'){el.classList.add('case-hidden');save()}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
 else init();
