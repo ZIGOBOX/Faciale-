@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.12.3';
-const DASHBOARD_BUILD='2026-08-18 10:15';
+const DASHBOARD_VERSION='V1.12.5';
+const DASHBOARD_BUILD='2026-08-18 09:56';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -1097,7 +1097,7 @@ else init();
 /* ===== V1.12.3 — INTERVENTIONS OUVERTES VISIBLES ===== */
 (function(){
 const PANEL_ID='openInterventionsPanelV123';
-const STORE='pst_open_interventions_panel_v123';
+const STORE='pst_interventions_ouvertes_panel_v125';
 
 function getPilotageData(){
   try{
@@ -1120,9 +1120,19 @@ function isClosed(v){
 function openInterventions(){
   const d=getPilotageData();
   if(!d)return [];
-  const rows=Array.isArray(d.maintenance)?d.maintenance:
-             Array.isArray(d.interventions)?d.interventions:[];
-  return rows.filter(x=>!isClosed(x.status||x.statut||x.state));
+  const rows=Array.isArray(d.maintenance)?d.maintenance:[];
+  return rows.filter(x=>{
+    const s=norm(x.status||x.statut||x.state||'');
+    return ![
+      'cloture','cloturee',
+      'termine','terminee',
+      'archive','archivee',
+      'annule','annulee',
+      'realise','realisee',
+      'resolu','resolue',
+      'ferme','fermee'
+    ].includes(s);
+  });
 }
 function escv(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function renderPanel(){
@@ -1139,13 +1149,16 @@ function renderPanel(){
   list.innerHTML=rows.map(x=>{
     const title=x.title||x.titre||x.subject||x.no||x.numero||'Intervention';
     const details=[
+      x.time?`🕒 ${x.time}`:'',
       x.family||x.category||x.categorie,
       x.building||x.batiment,
       x.floor||x.etage,
       x.room||x.salle,
-      x.owner||x.agent||x.assignedTo
+      x.requester?`Demandeur: ${x.requester}`:'',
+      x.assigned?`Assigné: ${x.assigned}`:'',
+      x.dueDate?`Échéance: ${x.dueDate}`:''
     ].filter(Boolean).join(' • ');
-    const status=x.status||x.statut||'Ouverte';
+    const status=x.status||'Ouverte';
     const priority=x.priority||x.priorite||'';
     return `<div class="oi-row">
       <div class="oi-text">
@@ -1190,7 +1203,7 @@ function addPanel(){
   const panel=document.createElement('section');
   panel.id=PANEL_ID;
   panel.className='dashboard-free-card open-interventions-panel';
-  panel.dataset.freeId='interventions-ouvertes-v123';
+  panel.dataset.freeId='interventions-ouvertes-v125';
   panel.dataset.freeTitle='Interventions ouvertes';
   panel.dataset.hidden='0';
   panel.innerHTML=`
@@ -1209,7 +1222,7 @@ function addPanel(){
     panel.style.left='20px';
     panel.style.top='520px';
     panel.style.width='620px';
-    panel.style.height='300px';
+    panel.style.height='360px';
   }
   panel.style.zIndex='5';
 
