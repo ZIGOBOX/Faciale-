@@ -668,3 +668,9 @@ body.free-layout-editing main{overflow:visible!important}
 .native-status{background:#eaf4ff;color:#256da9}
 .native-priority{background:#fff1e5;color:#b45b00}
 .native-empty{padding:12px;color:#7b8894;font-size:8px;font-style:italic}
+
+/* V1.12.8 — Interventions ouvertes intégrées aux autres cases */
+.bottom-grid > .interventions-native-panel{
+  min-width:0;
+  min-height:0;
+}

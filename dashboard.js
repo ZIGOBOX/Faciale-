@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.12.7';
-const DASHBOARD_BUILD='2026-08-18 10:12';
+const DASHBOARD_VERSION='V1.12.8';
+const DASHBOARD_BUILD='2026-08-18 12:42';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
