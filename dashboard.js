@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.12.1';
-const DASHBOARD_BUILD='2026-08-18 09:55';
+const DASHBOARD_VERSION='V1.12.2';
+const DASHBOARD_BUILD='2026-08-18 10:05';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -1091,4 +1091,152 @@ function init(){
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
 else init();
+})();
+
+/* ===== V1.12.2 — LISTE DES INTERVENTIONS OUVERTES ===== */
+(function(){
+function esc2(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function arr(v){return Array.isArray(v)?v:[]}
+function findOpenInterventions(){
+  const pools=[];
+  // Known/global candidate containers, without changing the existing synchronisation.
+  ['interventions','INTERVENTIONS','interventionsData','allInterventions','pilotageInterventions'].forEach(k=>{
+    try{if(Array.isArray(window[k]))pools.push(window[k])}catch(_){}
+  });
+  try{
+    if(window.DATA){
+      ['interventions','actions','items'].forEach(k=>{if(Array.isArray(window.DATA[k]))pools.push(window.DATA[k])});
+    }
+  }catch(_){}
+  try{
+    if(window.state){
+      ['interventions','actions'].forEach(k=>{if(Array.isArray(window.state[k]))pools.push(window.state[k])});
+    }
+  }catch(_){}
+
+  let list=pools.sort((a,b)=>b.length-a.length)[0]||[];
+  return list.filter(x=>{
+    const s=String(x.statut??x.status??x.etat??x.state??'').toLowerCase();
+    const closed=/clos|ferm|termin|résolu|resolu|fait|done|annul/.test(s);
+    return !closed;
+  });
+}
+function textOf(x){
+  return x.titre??x.title??x.objet??x.libelle??x.label??x.description??x.nom??'Intervention';
+}
+function subOf(x){
+  const parts=[
+    x.domaine??x.categorie??x.category,
+    x.lieu??x.location??x.salle,
+    x.agent??x.assigneA??x.assignee,
+    x.date??x.created_at??x.dateCreation
+  ].filter(Boolean);
+  return parts.join(' • ');
+}
+function renderOpenInterventions(){
+  const host=document.getElementById('openInterventionsList');
+  if(!host)return;
+  const list=findOpenInterventions();
+  if(!list.length){
+    host.innerHTML='<div class="oi-empty">Aucune intervention ouverte détaillée trouvée dans les données actuellement exposées.</div>';
+    return;
+  }
+  host.innerHTML=list.map(x=>`
+    <div class="oi-row">
+      <div class="oi-main">${esc2(textOf(x))}</div>
+      <div class="oi-sub">${esc2(subOf(x))}</div>
+      <span class="oi-status">${esc2(x.statut??x.status??x.etat??'Ouverte')}</span>
+    </div>`).join('');
+}
+function addPanel(){
+  const canvas=document.getElementById('freeLayoutCanvas');
+  if(!canvas || document.getElementById('openInterventionsPanel'))return;
+
+  const panel=document.createElement('section');
+  panel.id='openInterventionsPanel';
+  panel.className='panel dashboard-free-card';
+  panel.dataset.freeId='interventions-ouvertes-detail';
+  panel.dataset.freeTitle='Interventions ouvertes';
+  panel.dataset.hidden='0';
+  panel.innerHTML=`
+    <div class="panel-head"><h3>INTERVENTIONS OUVERTES</h3></div>
+    <div id="openInterventionsList" class="open-interventions-list"></div>
+    <button type="button" class="free-card-close" title="Masquer cette case">×</button>
+    <div class="free-resize-corner" title="Tirer pour redimensionner">↘</div>`;
+
+  // Put it below current cards on first load.
+  let bottom=0;
+  [...canvas.children].forEach(el=>{
+    if(!el.classList.contains('dashboard-free-card') || el.dataset.hidden==='1')return;
+    bottom=Math.max(bottom,(parseFloat(el.style.top)||0)+(parseFloat(el.style.height)||el.offsetHeight));
+  });
+  panel.style.left='0px';
+  panel.style.top=(Math.round((bottom+20)/10)*10)+'px';
+  panel.style.width=Math.min(620,Math.max(360,canvas.clientWidth*.48))+'px';
+  panel.style.height='260px';
+  panel.style.zIndex='1';
+  canvas.appendChild(panel);
+
+  // Integrate with V1.12.1's free controls by dispatching local pointer logic.
+  let editing=()=>document.body.classList.contains('free-layout-editing');
+  let z=200;
+  panel.addEventListener('pointerdown',e=>{
+    if(!editing()||window.innerWidth<900||e.button!==0||e.target.closest('button,.free-resize-corner'))return;
+    e.preventDefault();
+    panel.style.zIndex=String(++z);
+    const sx=e.clientX,sy=e.clientY,ox=parseFloat(panel.style.left)||0,oy=parseFloat(panel.style.top)||0;
+    const pid=e.pointerId;
+    try{panel.setPointerCapture(pid)}catch(_){}
+    const move=ev=>{
+      if(ev.pointerId!==pid)return;
+      panel.style.left=Math.max(0,Math.round((ox+ev.clientX-sx)/10)*10)+'px';
+      panel.style.top=Math.max(0,Math.round((oy+ev.clientY-sy)/10)*10)+'px';
+    };
+    const end=ev=>{
+      if(ev.pointerId!==pid)return;
+      panel.removeEventListener('pointermove',move);panel.removeEventListener('pointerup',end);panel.removeEventListener('pointercancel',end);
+      saveOwn();
+    };
+    panel.addEventListener('pointermove',move);panel.addEventListener('pointerup',end);panel.addEventListener('pointercancel',end);
+  });
+  const rh=panel.querySelector('.free-resize-corner');
+  rh.addEventListener('pointerdown',e=>{
+    if(!editing()||window.innerWidth<900)return;
+    e.preventDefault();e.stopPropagation();
+    const sx=e.clientX,sy=e.clientY,sw=panel.offsetWidth,sh=panel.offsetHeight,pid=e.pointerId;
+    try{rh.setPointerCapture(pid)}catch(_){}
+    const move=ev=>{
+      if(ev.pointerId!==pid)return;
+      panel.style.width=Math.max(260,Math.round((sw+ev.clientX-sx)/10)*10)+'px';
+      panel.style.height=Math.max(120,Math.round((sh+ev.clientY-sy)/10)*10)+'px';
+    };
+    const end=ev=>{if(ev.pointerId!==pid)return;rh.removeEventListener('pointermove',move);rh.removeEventListener('pointerup',end);rh.removeEventListener('pointercancel',end);saveOwn()};
+    rh.addEventListener('pointermove',move);rh.addEventListener('pointerup',end);rh.addEventListener('pointercancel',end);
+  });
+  panel.querySelector('.free-card-close').addEventListener('click',e=>{
+    e.stopPropagation();panel.dataset.hidden='1';panel.style.display='none';saveOwn();
+  });
+
+  function saveOwn(){
+    try{
+      const key='pst_dashboard_open_interventions_v1122';
+      localStorage.setItem(key,JSON.stringify({
+        x:parseFloat(panel.style.left)||0,y:parseFloat(panel.style.top)||0,
+        w:panel.offsetWidth,h:panel.offsetHeight,hidden:panel.dataset.hidden==='1'
+      }));
+    }catch(_){}
+  }
+  try{
+    const s=JSON.parse(localStorage.getItem('pst_dashboard_open_interventions_v1122')||'null');
+    if(s){
+      panel.style.left=s.x+'px';panel.style.top=s.y+'px';panel.style.width=s.w+'px';panel.style.height=s.h+'px';
+      if(s.hidden){panel.dataset.hidden='1';panel.style.display='none'}
+    }
+  }catch(_){}
+
+  renderOpenInterventions();
+  setInterval(renderOpenInterventions,5000);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(addPanel,100));
+else setTimeout(addPanel,100);
 })();

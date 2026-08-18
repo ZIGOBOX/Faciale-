@@ -635,3 +635,14 @@ body.free-layout-editing main{overflow:visible!important}
   body.free-layout-editing .dashboard-free-card{cursor:default!important}
   .free-resize-corner{display:none!important}
 }
+
+/* V1.12.2 — détail interventions ouvertes */
+#openInterventionsPanel{background:#fff;border:1px solid #d7e0e8;border-radius:9px}
+#openInterventionsPanel .panel-head{padding:9px 12px;border-bottom:1px solid #e5ebf0}
+#openInterventionsPanel .panel-head h3{margin:0;font-size:11px;color:#1d3348}
+.open-interventions-list{height:calc(100% - 42px);overflow:auto;padding:4px 8px}
+.oi-row{position:relative;padding:8px 82px 8px 8px;border-bottom:1px solid #edf1f4}
+.oi-main{font-size:10px;font-weight:800;color:#22384d}
+.oi-sub{margin-top:2px;font-size:8px;color:#748493}
+.oi-status{position:absolute;right:7px;top:10px;padding:3px 6px;border-radius:10px;background:#eaf4ff;color:#2670ad;font-size:7px;font-weight:900}
+.oi-empty{padding:15px;color:#778896;font-size:9px;font-style:italic}
