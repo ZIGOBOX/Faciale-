@@ -607,3 +607,133 @@ body.case-editing .case-hidden-tray{display:block}
     justify-content:flex-end!important;
   }
 }
+
+/* ===== V1.12.0 — PLACEMENT LIBRE À LA SOURIS ===== */
+.free-dashboard-canvas{
+  position:relative;
+  width:100%;
+  min-height:760px;
+  margin-top:6px;
+  border-radius:10px;
+}
+.free-dashboard-canvas .dashboard-case{
+  position:absolute!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  overflow:auto;
+  transition:box-shadow .12s ease, outline .12s ease;
+}
+body.free-editing .free-dashboard-canvas{
+  background:
+    linear-gradient(to right, rgba(47,128,237,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(47,128,237,.055) 1px, transparent 1px);
+  background-size:10px 10px;
+  outline:2px dashed #8fb7dc;
+  outline-offset:-2px;
+}
+body.free-editing .dashboard-case{
+  outline:2px solid #2f80ed!important;
+  cursor:grab!important;
+  user-select:none!important;
+}
+body.free-editing .dashboard-case.dragging{
+  cursor:grabbing!important;
+  box-shadow:0 10px 26px rgba(23,61,94,.28)!important;
+  outline:3px solid #0d6ecb!important;
+}
+.free-case-toolbar{
+  display:none;
+  position:absolute;
+  top:4px;
+  right:4px;
+  z-index:2147483000;
+  gap:4px;
+  padding:3px 4px;
+  background:rgba(18,54,83,.96);
+  border-radius:7px;
+  box-shadow:0 2px 8px rgba(0,0,0,.18);
+}
+body.free-editing .free-case-toolbar{display:flex}
+.free-case-toolbar button{
+  border:1px solid rgba(255,255,255,.75);
+  border-radius:5px;
+  background:#fff;
+  color:#173f60;
+  height:27px;
+  padding:0 8px;
+  font-size:9px;
+  font-weight:900;
+  cursor:pointer;
+}
+.free-case-toolbar .free-hide{
+  background:#ffe9eb;
+  color:#b32331;
+  border-color:#ffc0c7;
+}
+.free-resize-handle{
+  display:none;
+  position:absolute;
+  right:0;
+  bottom:0;
+  width:22px;
+  height:22px;
+  z-index:2147483000;
+  background:#1675be;
+  color:#fff;
+  border-radius:8px 0 0 0;
+  cursor:nwse-resize;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:900;
+  user-select:none;
+  touch-action:none;
+}
+body.free-editing .free-resize-handle{display:flex}
+.free-hidden-tray{
+  display:none;
+  margin:8px 0 0;
+  padding:7px;
+  border:1px dashed #9bb4c9;
+  border-radius:8px;
+  background:#f5f9fc;
+  font-size:9px;
+}
+body.free-editing .free-hidden-tray{display:block}
+.free-hidden-tray button{
+  margin:3px;
+  border:1px solid #c7d5e1;
+  background:#fff;
+  border-radius:6px;
+  padding:5px 8px;
+  font-size:8px;
+  font-weight:800;
+  color:#315b82;
+  cursor:pointer;
+}
+body.free-editing main{
+  overflow:visible!important;
+}
+.free-origin-placeholder{
+  display:none!important;
+}
+
+/* Mobile/tablette : disposition verticale simple, le placement libre reste un outil PC */
+@media(max-width:899px){
+  .free-dashboard-canvas{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:8px!important;
+    min-height:0!important;
+  }
+  .free-dashboard-canvas .dashboard-case{
+    position:relative!important;
+    left:auto!important;
+    top:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:80px!important;
+  }
+  body.free-editing .dashboard-case{cursor:default!important}
+  .free-resize-handle{display:none!important}
+}
