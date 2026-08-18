@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.11.0';
-const DASHBOARD_BUILD='2026-08-18 09:25';
+const DASHBOARD_VERSION='V1.11.1';
+const DASHBOARD_BUILD='2026-08-18 09:35';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -861,7 +861,8 @@ function store(){
     state[el.dataset.caseId]={
       order:siblings.indexOf(el),
       hidden:el.classList.contains('case-hidden'),
-      size:el.classList.contains('case-full')?'full':el.classList.contains('case-wide')?'wide':el.classList.contains('case-compact')?'compact':'normal'
+      size:el.classList.contains('case-full')?'full':el.classList.contains('case-wide')?'wide':el.classList.contains('case-compact')?'compact':'normal',
+      height:Number(el.dataset.caseHeight||0)
     };
   });
   localStorage.setItem(KEY,JSON.stringify(state));
@@ -874,7 +875,9 @@ function toolsFor(el){
   t.innerHTML=
     '<button type="button" data-ca="up" class="case-up" title="Monter cette case">↑ MONTER</button>'+
     '<button type="button" data-ca="down" class="case-down" title="Descendre cette case">↓ DESCENDRE</button>'+
-    '<button type="button" data-ca="size" class="case-size" title="Changer la taille">↔ TAILLE</button>'+
+    '<button type="button" data-ca="size" class="case-size" title="Changer la largeur">↔ LARGEUR</button>'+
+    '<button type="button" data-ca="height-up" class="case-height-up" title="Augmenter la hauteur">↕ + HAUTEUR</button>'+
+    '<button type="button" data-ca="height-down" class="case-height-down" title="Réduire la hauteur">↕ - HAUTEUR</button>'+
     '<button type="button" data-ca="hide" class="case-x" title="Masquer cette case">× MASQUER</button>';
   el.appendChild(t);
 }
@@ -892,6 +895,9 @@ function setup(){
       el.classList.toggle('case-wide',s.size==='wide');
       el.classList.toggle('case-full',s.size==='full');
       el.classList.toggle('case-compact',s.size==='compact');
+      const h=Math.max(-2,Math.min(4,Number(s.height||0)));
+      el.dataset.caseHeight=String(h);
+      applyCaseHeight(el,h);
     }
   });
   const parents=[...new Set(cases.map(x=>x.parentElement))];
@@ -917,6 +923,20 @@ function drawTray(){
     ? hidden.map(x=>'<button type="button" data-restore="'+x.dataset.caseId+'">+ '+x.dataset.caseTitle+'</button>').join(' ')
     : '<span>aucune</span>');
 }
+
+function applyCaseHeight(el,level){
+  level=Math.max(-2,Math.min(4,Number(level||0)));
+  el.dataset.caseHeight=String(level);
+  el.classList.remove('case-hm2','case-hm1','case-h0','case-h1','case-h2','case-h3','case-h4');
+  el.classList.add(level<0?`case-hm${Math.abs(level)}`:`case-h${level}`);
+}
+function changeCaseHeight(el,delta){
+  const current=Number(el.dataset.caseHeight||0);
+  const next=Math.max(-2,Math.min(4,current+delta));
+  applyCaseHeight(el,next);
+  store();
+}
+
 function setEditing(v){
   editing=v;
   document.body.classList.toggle('case-editing',v);
@@ -954,6 +974,8 @@ function click(e){
   if(btn.dataset.ca==='up')move(el,-1);
   if(btn.dataset.ca==='down')move(el,1);
   if(btn.dataset.ca==='size')size(el);
+  if(btn.dataset.ca==='height-up')changeCaseHeight(el,1);
+  if(btn.dataset.ca==='height-down')changeCaseHeight(el,-1);
   if(btn.dataset.ca==='hide'){el.classList.add('case-hidden');store()}
 }
 function init(){

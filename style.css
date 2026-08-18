@@ -674,3 +674,43 @@ body.layout-editing .item-hidden-tray{display:flex}
     font-size:9px!important;
   }
 }
+
+/* V1.11.1 — taille verticale indépendante */
+.dashboard-case.case-hm2{min-height:58px!important;max-height:75px!important;overflow:auto!important}
+.dashboard-case.case-hm1{min-height:82px!important;max-height:105px!important;overflow:auto!important}
+.dashboard-case.case-h0{}
+.dashboard-case.case-h1{min-height:150px!important}
+.dashboard-case.case-h2{min-height:220px!important}
+.dashboard-case.case-h3{min-height:320px!important}
+.dashboard-case.case-h4{min-height:440px!important}
+
+/* En mode organisation, la barre doit rester visible même sur une case courte */
+.case-editing .dashboard-case.case-hm2,
+.case-editing .dashboard-case.case-hm1{
+  min-height:120px!important;
+  max-height:none!important;
+  overflow:visible!important
+}
+
+/* Boutons de hauteur */
+.case-editing .dashboard-case > .case-tools .case-height-up,
+.case-editing .dashboard-case > .case-tools .case-height-down{
+  background:#eef9f1!important;
+  color:#1f6d3d!important;
+  border-color:#b9dfc5!important;
+}
+
+@media(max-width:1350px){
+  .case-editing .dashboard-case{
+    padding-top:112px!important;
+  }
+  .case-editing .dashboard-case > .case-tools{
+    height:104px!important;
+    flex-wrap:wrap!important;
+    justify-content:flex-start!important;
+    align-content:center!important;
+  }
+  .case-editing .dashboard-case > .case-tools button{
+    min-width:125px!important;
+  }
+}
