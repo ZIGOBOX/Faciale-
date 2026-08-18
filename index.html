@@ -22,13 +22,15 @@
   </div>
   <div class="top-actions">
     <span id="state" class="state">Connexion aux données…</span>
+    <button id="layoutEditBtn" class="refresh-btn layout-edit-btn" type="button">⚙ Organiser</button>
+    <button id="layoutResetBtn" class="refresh-btn layout-reset-btn" type="button" hidden>↺ Réinitialiser</button>
     <button id="refreshTop" class="refresh-btn">↻ Actualiser</button>
     <a class="pilotage-btn" href="/service-Technique-2/" target="_blank">Ouvrir Pilotage ↗</a>
   </div>
 </header>
 
 <main>
-  <section class="kpi-grid">
+  <section class="kpi-grid dashboard-block" id="block-kpis" data-block-title="Indicateurs principaux">
     <article class="kpi red">
       <div class="kpi-title">🛡 CONTRÔLES PÉRIODIQUES</div>
       <strong id="periodic">—</strong>
@@ -78,7 +80,7 @@
     </article>
   </section>
 
-  <section class="agent-now-panel">
+  <section class="agent-now-panel dashboard-block" id="block-agents" data-block-title="État des agents">
     <div class="panel-head green-head">
       <h2>ÉTAT DES AGENTS MAINTENANT</h2>
       <span id="agentNowSummary" class="agent-now-summary">—</span>
@@ -86,7 +88,7 @@
     <div id="agentNowList" class="agent-now-grid"></div>
   </section>
 
-  <section class="middle-grid">
+  <section class="middle-grid dashboard-block" id="block-graphs" data-block-title="Graphiques">
     <article class="panel chart-panel">
       <div class="panel-head">
         <h2>ÉVOLUTION SUR 7 JOURS</h2>
@@ -114,7 +116,7 @@
     </article>
   </section>
 
-  <section class="bottom-grid">
+  <section class="bottom-grid dashboard-block" id="block-details" data-block-title="Urgences, planning et contrôles">
     <article class="panel">
       <div class="panel-head red-head"><h2>TOP 5 URGENCES</h2><button id="chooseTopUrgencies" class="choose-btn">Choisir</button></div>
       <div id="urgentList" class="fast-list"></div>
@@ -138,7 +140,7 @@
   </section>
 
   
-  <section class="links-panel">
+  <section class="links-panel dashboard-block" id="block-links" data-block-title="Raccourcis">
     <div class="panel-head blue-head">
       <h2>RACCOURCIS / LIENS PERSONNALISÉS</h2>
       <button id="manageLinks" class="choose-btn links-manage-btn">Gérer les liens</button>
@@ -146,7 +148,7 @@
     <div id="customLinksGrid" class="custom-links-grid"></div>
   </section>
 
-<section class="footer-tools">
+<section class="footer-tools dashboard-block" id="block-tools" data-block-title="Outils et synchronisation">
     <div>
       <span class="live-dot"></span>
       <strong>Données mises à jour automatiquement</strong>
@@ -159,8 +161,8 @@
 
 
 <footer class="version-footer">
-  <strong>DASHBOARD V1.10.6</strong>
-  <span>Build 2026-08-14 15:36</span>
+  <strong>DASHBOARD V1.10.7</strong>
+  <span>Build 2026-08-18 08:52</span>
   <span>Connexion : Pilotage Service Technique</span>
 </footer>
 

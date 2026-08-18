@@ -517,3 +517,44 @@ main{max-width:1700px;margin:auto;padding:12px}
   .planning-event-main b{font-size:11px}
   .planning-event-main small{font-size:9px}
 }
+
+/* V1.10.7 — organisation personnalisable du dashboard */
+.layout-edit-btn.active{background:#1f6fb2!important;color:#fff!important;border-color:#1f6fb2!important}
+body.layout-editing main{padding-top:38px;position:relative}
+body.layout-editing main:before{
+  content:"MODE ORGANISATION — déplace, agrandis ou masque les blocs";
+  position:absolute;top:4px;left:0;right:0;text-align:center;
+  font-size:10px;font-weight:900;color:#315b82
+}
+.dashboard-block{position:relative;transition:opacity .15s ease,outline .15s ease}
+body.layout-editing .dashboard-block{outline:2px dashed #7faed5;outline-offset:2px}
+.dashboard-block.is-hidden{display:none!important}
+.dashboard-block.is-wide{grid-column:1/-1!important;width:100%!important}
+.dashboard-block.is-compact{max-height:170px!important;overflow:auto!important}
+.block-layout-tools{
+  display:none;position:absolute;right:7px;top:7px;z-index:50;
+  gap:4px;align-items:center;padding:4px;background:rgba(255,255,255,.96);
+  border:1px solid #cbd9e6;border-radius:8px;box-shadow:0 2px 8px rgba(29,64,94,.12)
+}
+body.layout-editing .block-layout-tools{display:flex}
+.block-layout-tools button{
+  min-width:28px;height:28px;padding:0 6px;border:1px solid #c8d5e1;border-radius:6px;
+  background:#fff;color:#29465f;font-size:13px;font-weight:900;cursor:pointer
+}
+.block-layout-tools button:hover{background:#edf5fc}
+.block-layout-tools .block-close{color:#a12632;background:#fff2f3;border-color:#efc5ca}
+.hidden-blocks-tray{
+  display:none;margin:8px 0;padding:7px;border:1px dashed #9fb8cd;border-radius:8px;
+  background:#f5f9fc;gap:6px;align-items:center;flex-wrap:wrap
+}
+body.layout-editing .hidden-blocks-tray{display:flex}
+.hidden-blocks-tray strong{font-size:9px;color:#53697b}
+.hidden-blocks-tray button{
+  border:1px solid #c8d5e1;border-radius:6px;background:#fff;padding:5px 8px;
+  font-size:8px;font-weight:800;color:#315b82;cursor:pointer
+}
+@media(max-width:700px){
+  .block-layout-tools{right:5px;top:5px}
+  .block-layout-tools button{min-width:34px;height:34px}
+  body.layout-editing main{padding-top:45px}
+}

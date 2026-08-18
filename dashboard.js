@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.10.6';
-const DASHBOARD_BUILD='2026-08-14 15:36';
+const DASHBOARD_VERSION='V1.10.7';
+const DASHBOARD_BUILD='2026-08-18 08:52';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -819,3 +819,118 @@ document.addEventListener('click',e=>{
   const down=e.target.closest('[data-link-down]');if(down){moveCustomLink(down.dataset.linkDown,1);return}
 });
 renderCustomLinks();
+
+
+/* ---------- ORGANISATION PERSONNALISABLE V1.10.7 ---------- */
+const DASH_LAYOUT_KEY='pst_dashboard_layout_v1107';
+let dashboardLayoutEditing=false;
+
+function dashboardBlocks(){
+  return [...document.querySelectorAll('main > .dashboard-block')];
+}
+function defaultDashboardLayout(){
+  return dashboardBlocks().map((el,i)=>({id:el.id,order:i,size:'normal',hidden:false}));
+}
+function loadDashboardLayout(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(DASH_LAYOUT_KEY)||'null');
+    return Array.isArray(raw)?raw:defaultDashboardLayout();
+  }catch(_){return defaultDashboardLayout()}
+}
+function saveDashboardLayout(){
+  const state=dashboardBlocks().map((el,i)=>({
+    id:el.id,order:i,
+    size:el.classList.contains('is-wide')?'wide':el.classList.contains('is-compact')?'compact':'normal',
+    hidden:el.classList.contains('is-hidden')
+  }));
+  try{localStorage.setItem(DASH_LAYOUT_KEY,JSON.stringify(state))}catch(_){}
+  renderHiddenBlocksTray();
+}
+function ensureLayoutTools(el){
+  if(el.querySelector(':scope > .block-layout-tools'))return;
+  const tools=document.createElement('div');
+  tools.className='block-layout-tools';
+  tools.innerHTML=`
+    <button type="button" data-layout-action="up" title="Monter">↑</button>
+    <button type="button" data-layout-action="down" title="Descendre">↓</button>
+    <button type="button" data-layout-action="size" title="Changer la taille">↔</button>
+    <button type="button" class="block-close" data-layout-action="hide" title="Masquer">×</button>`;
+  el.appendChild(tools);
+}
+function applyDashboardLayout(){
+  const main=document.querySelector('main');if(!main)return;
+  const state=loadDashboardLayout(),byId=new Map(state.map(x=>[x.id,x]));
+  dashboardBlocks().forEach(ensureLayoutTools);
+  [...state].sort((a,b)=>(a.order||0)-(b.order||0)).forEach(x=>{
+    const el=document.getElementById(x.id);if(!el)return;
+    el.classList.toggle('is-hidden',!!x.hidden);
+    el.classList.toggle('is-wide',x.size==='wide');
+    el.classList.toggle('is-compact',x.size==='compact');
+    main.appendChild(el);
+  });
+  // Keep footer tools as a normal movable block, but keep tray last.
+  let tray=document.getElementById('hiddenBlocksTray');
+  if(!tray){
+    tray=document.createElement('div');tray.id='hiddenBlocksTray';tray.className='hidden-blocks-tray';
+  }
+  main.appendChild(tray);
+  renderHiddenBlocksTray();
+}
+function renderHiddenBlocksTray(){
+  const tray=document.getElementById('hiddenBlocksTray');if(!tray)return;
+  const hidden=dashboardBlocks().filter(x=>x.classList.contains('is-hidden'));
+  tray.innerHTML=`<strong>Blocs masqués :</strong>${hidden.length?hidden.map(x=>`<button type="button" data-restore-block="${esc(x.id)}">+ ${esc(x.dataset.blockTitle||x.id)}</button>`).join(''):'<span style="font-size:8px;color:#7b8995">aucun</span>'}`;
+}
+function moveDashboardBlock(el,delta){
+  const blocks=dashboardBlocks().filter(x=>!x.classList.contains('is-hidden'));
+  const i=blocks.indexOf(el),j=i+delta;if(i<0||j<0||j>=blocks.length)return;
+  if(delta<0)el.parentNode.insertBefore(el,blocks[j]);
+  else el.parentNode.insertBefore(blocks[j],el);
+  saveDashboardLayout();
+}
+function cycleDashboardBlockSize(el){
+  if(el.classList.contains('is-wide')){
+    el.classList.remove('is-wide');el.classList.add('is-compact');
+  }else if(el.classList.contains('is-compact')){
+    el.classList.remove('is-compact');
+  }else{
+    el.classList.add('is-wide');
+  }
+  saveDashboardLayout();
+}
+function setDashboardLayoutEditing(on){
+  dashboardLayoutEditing=!!on;
+  document.body.classList.toggle('layout-editing',dashboardLayoutEditing);
+  const b=document.getElementById('layoutEditBtn');
+  if(b){b.classList.toggle('active',dashboardLayoutEditing);b.textContent=dashboardLayoutEditing?'✓ Terminer':'⚙ Organiser'}
+  const r=document.getElementById('layoutResetBtn');if(r)r.hidden=!dashboardLayoutEditing;
+  renderHiddenBlocksTray();
+}
+document.addEventListener('click',e=>{
+  const edit=e.target.closest('#layoutEditBtn');
+  if(edit){setDashboardLayoutEditing(!dashboardLayoutEditing);return}
+  const reset=e.target.closest('#layoutResetBtn');
+  if(reset){
+    if(confirm("Réinitialiser l'organisation du dashboard ?")){
+      try{localStorage.removeItem(DASH_LAYOUT_KEY)}catch(_){}
+      location.reload();
+    }
+    return;
+  }
+  const restore=e.target.closest('[data-restore-block]');
+  if(restore){
+    const el=document.getElementById(restore.dataset.restoreBlock);
+    if(el){el.classList.remove('is-hidden');saveDashboardLayout()}
+    return;
+  }
+  if(!dashboardLayoutEditing)return;
+  const action=e.target.closest('[data-layout-action]');
+  if(!action)return;
+  const el=action.closest('.dashboard-block');if(!el)return;
+  const what=action.dataset.layoutAction;
+  if(what==='up')moveDashboardBlock(el,-1);
+  else if(what==='down')moveDashboardBlock(el,1);
+  else if(what==='size')cycleDashboardBlockSize(el);
+  else if(what==='hide'){el.classList.add('is-hidden');saveDashboardLayout()}
+});
+applyDashboardLayout();
