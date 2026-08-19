@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.14.4';
-const DASHBOARD_BUILD='2026-08-19 18:46';
+const DASHBOARD_VERSION='V1.14.5';
+const DASHBOARD_BUILD='2026-08-19 18:50';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -653,19 +653,24 @@ function renderNativeInterventions(data=db()){
 }
 
 
-/* ===== V1.14.4 — NOTES ===== */
-function dashboardActiveNotes(data=db()){
+/* ===== V1.14.5 — NOTES NATIVES ===== */
+function dashboardVisibleNotes(data=db()){
   const rows=Array.isArray(data?.notes)?data.notes:[];
   return rows.filter(x=>{
     const s=norm(x.status||x.statut||x.state||'');
-    return !['archive','archivee','supprime','supprimee','termine','terminee','cloture','cloturee'].includes(s);
+    return ![
+      'archive','archivee',
+      'supprime','supprimee',
+      'cloture','cloturee',
+      'termine','terminee'
+    ].includes(s);
   });
 }
 function renderNativeNotes(data=db()){
   const box=document.getElementById('notesNativeList');
   const count=document.getElementById('notesNativeCount');
   if(!box||!count)return;
-  const rows=dashboardActiveNotes(data);
+  const rows=dashboardVisibleNotes(data);
   count.textContent=String(rows.length);
   if(!rows.length){
     box.innerHTML='<div class="notes-empty">Aucune note active.</div>';
@@ -673,23 +678,23 @@ function renderNativeNotes(data=db()){
   }
   box.innerHTML=rows.map(x=>{
     const title=x.title||x.titre||x.subject||'Note';
-    const txt=x.text||x.content||x.note||x.description||x.body||'';
+    const body=x.text||x.content||x.note||x.description||x.body||'';
     const details=[
       x.date||'',
       x.time?`🕒 ${x.time}`:'',
       x.author||x.agent||x.owner||'',
       x.dueDate?`Échéance : ${x.dueDate}`:''
     ].filter(Boolean).join(' • ');
-    return `<div class="note-native-row">
+    return `<div class="notes-row">
       <b>${esc(title)}</b>
-      ${txt?`<p>${esc(txt)}</p>`:''}
+      ${body?`<p>${esc(body)}</p>`:''}
       ${details?`<small>${esc(details)}</small>`:''}
     </div>`;
   }).join('');
 }
 
-function renderAll(data){renderNativeNotes(data);
-  renderKpis(data);renderNativeInterventions(data);renderAgentNow(data);renderPlanning(data);renderUrgencies(data);renderPeriodic(data);renderDomains(data);renderCharts(data);
+function renderAll(data){
+  renderNativeNotes(data);renderKpis(data);renderNativeInterventions(data);renderAgentNow(data);renderPlanning(data);renderUrgencies(data);renderPeriodic(data);renderDomains(data);renderCharts(data);
   const d=new Date();$('todayTitle').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('lastUpdate').textContent='Mise à jour : '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
@@ -1197,6 +1202,7 @@ function themeColor(card){
   if(/intervention|planning|evolution/.test(t))return '#168bd2';
   if(/presence|agent|conformite|mise a jour/.test(t))return '#10a69a';
   if(/charge|repartition/.test(t))return '#f5a000';
+  if(/notes/.test(t))return '#8b5cf6';
   return '#738291';
 }
 function loadStripe(){
@@ -1248,6 +1254,7 @@ function preferredSize(card,cw){
   if(/controle.*retard/.test(t)) return {w:Math.min(520,cw),h:260};
   if(/etat des agents/.test(t)) return {w:Math.min(500,cw),h:190};
   if(/evolution|charge de travail|repartition/.test(t)) return {w:Math.min(430,cw),h:180};
+  if(/notes/.test(t)) return {w:Math.min(440,cw),h:220};
   if(/raccourcis/.test(t)) return {w:Math.min(440,cw),h:170};
   if(/donnees mises a jour/.test(t)) return {w:Math.min(520,cw),h:90};
   if(card.closest?.('.kpi-grid') || /controles periodiques|presence agents|actions urgentes|interventions ouvertes|planning du jour|conformite menage/.test(t))
@@ -1285,6 +1292,7 @@ function autoArrange(){
     if(/planning d'aujourd'hui/.test(t))return 31;
     if(/controles periodiques en retard/.test(t))return 32;
     if(/interventions ouvertes/.test(t))return 33;
+    if(/notes/.test(t))return 34;
     if(/raccourcis/.test(t))return 40;
     if(/donnees mises a jour/.test(t))return 41;
     return 50;
@@ -1621,132 +1629,3 @@ else init();
 })();
 
 setInterval(()=>{try{renderNativeNotes(db())}catch(_){}},2000);
-
-/* ===== V1.14.4 — RESTAURATION INDIVIDUELLE DES CARTES ===== */
-(function(){
-function getCanvas(){
-  return document.getElementById('freeLayoutCanvas') || document.querySelector('.free-layout-canvas');
-}
-function allCards(){
-  return [...document.querySelectorAll('.dashboard-free-card')];
-}
-function cardTitle(card){
-  return card.dataset.freeTitle ||
-         card.querySelector('.kpi-title,.panel-head h2,.panel-head h3,h2,h3')?.textContent?.trim() ||
-         card.id || 'Carte';
-}
-function cardId(card,i){
-  return card.dataset.freeId || card.id || `card-${i}`;
-}
-function isHidden(card){
-  return card.style.display==='none' ||
-         card.dataset.hidden==='1' ||
-         card.classList.contains('free-hidden') ||
-         card.classList.contains('case-hidden') ||
-         card.classList.contains('is-hidden');
-}
-function unhide(card){
-  card.style.display='';
-  card.dataset.hidden='0';
-  card.classList.remove('free-hidden','case-hidden','is-hidden');
-}
-function ensureTray(){
-  let tray=document.getElementById('hiddenCardsIndividualTray');
-  if(tray)return tray;
-  tray=document.createElement('div');
-  tray.id='hiddenCardsIndividualTray';
-  tray.className='hidden-cards-individual-tray';
-  const main=document.querySelector('main');
-  main?.appendChild(tray);
-  return tray;
-}
-function renderTray(){
-  const tray=ensureTray();
-  if(!tray)return;
-  const hidden=allCards().filter(isHidden);
-  tray.innerHTML='<strong>Cartes masquées :</strong> '+
-    (hidden.length
-      ? hidden.map((card,i)=>`<button type="button" data-restore-one="${cardId(card,i)}">+ ${cardTitle(card)}</button>`).join('')
-      : '<span>Aucune</span>');
-}
-function clearHiddenFlagFromStores(card){
-  const id=card.dataset.freeId||card.id;
-  const keys=[
-    'pst_dashboard_free_layout_v1121',
-    'pst_dashboard_free_layout_v1120',
-    'pst_dashboard_layout_v1113',
-    'pst_dashboard_cases_v1109',
-    'pst_dashboard_item_layout_v1108',
-    'pst_dashboard_layout_v1107',
-    'pst_interventions_layout_v1141'
-  ];
-  keys.forEach(key=>{
-    try{
-      const raw=localStorage.getItem(key); if(!raw)return;
-      const obj=JSON.parse(raw); if(!obj||typeof obj!=='object')return;
-      if(Array.isArray(obj)){
-        obj.forEach(x=>{if(x&&typeof x==='object' && (!id || x.id===id))x.hidden=false});
-      }else{
-        if(id && obj[id] && typeof obj[id]==='object')obj[id].hidden=false;
-        if('hidden' in obj && (card.id==='interventionsNativePanel' || card.id==='notesNativePanel'))obj.hidden=false;
-      }
-      localStorage.setItem(key,JSON.stringify(obj));
-    }catch(_){}
-  });
-}
-function restoreOne(id){
-  const cards=allCards();
-  const card=cards.find((c,i)=>cardId(c,i)===id);
-  if(!card)return;
-  unhide(card);
-  clearHiddenFlagFromStores(card);
-
-  // If it has no useful position, place it in a visible free area.
-  const canvas=getCanvas();
-  if(canvas && window.innerWidth>=900){
-    const x=parseFloat(card.style.left), y=parseFloat(card.style.top);
-    if(!Number.isFinite(x) || !Number.isFinite(y)){
-      card.style.left='20px';
-      card.style.top='520px';
-    }
-    card.style.zIndex='100';
-  }
-  renderTray();
-}
-function syncVisibility(){
-  const edit=document.body.classList.contains('free-layout-editing');
-  const tray=ensureTray();
-  if(tray)tray.style.display=edit?'block':'none';
-  renderTray();
-}
-function init(){
-  ensureTray();
-  renderTray();
-
-  document.addEventListener('click',e=>{
-    const b=e.target.closest('[data-restore-one]');
-    if(b){
-      e.preventDefault();
-      restoreOne(b.dataset.restoreOne);
-      return;
-    }
-    if(e.target.closest('.free-card-close')){
-      setTimeout(renderTray,80);
-    }
-  },true);
-
-  const edit=document.getElementById('layoutEditBtn');
-  edit?.addEventListener('click',()=>setTimeout(syncVisibility,30));
-
-  new MutationObserver(()=>renderTray()).observe(document.body,{
-    childList:true,
-    subtree:true,
-    attributes:true,
-    attributeFilter:['style','class','data-hidden']
-  });
-
-  syncVisibility();
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
-else init();
-})();

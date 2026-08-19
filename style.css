@@ -856,11 +856,11 @@ body.free-layout-editing #interventionsNativePanel.dashboard-free-card.free-drag
   overflow-wrap:anywhere;
 }
 
-/* ===== V1.14.4 — NOTES ===== */
+/* ===== V1.14.5 — CARTE NOTES ===== */
 .notes-native-panel{
   --stripe:#8b5cf6;
-  min-width:300px!important;
-  min-height:160px!important;
+  min-width:280px!important;
+  min-height:150px!important;
 }
 .notes-count-badge{
   display:inline-grid;
@@ -879,23 +879,23 @@ body.free-layout-editing #interventionsNativePanel.dashboard-free-card.free-drag
   overflow:auto;
   padding:4px 7px;
 }
-.note-native-row{
+.notes-row{
   padding:8px 5px;
   border-bottom:1px solid #edf1f4;
 }
-.note-native-row b{
+.notes-row b{
   display:block;
   font-size:9px;
   color:#2b3650;
 }
-.note-native-row p{
+.notes-row p{
   margin:3px 0;
   font-size:8px;
   color:#536274;
   line-height:1.3;
   white-space:pre-wrap;
 }
-.note-native-row small{
+.notes-row small{
   display:block;
   font-size:7px;
   color:#84909c;
@@ -905,33 +905,4 @@ body.free-layout-editing #interventionsNativePanel.dashboard-free-card.free-drag
   font-size:8px;
   color:#7b8894;
   font-style:italic;
-}
-
-/* ===== V1.14.4 — CARTES MASQUÉES 1 PAR 1 ===== */
-.hidden-cards-individual-tray{
-  display:none;
-  margin:8px 0;
-  padding:8px;
-  border:1px dashed #9cb5c9;
-  border-radius:8px;
-  background:#f6f9fc;
-  font-size:9px;
-}
-.hidden-cards-individual-tray strong{
-  color:#41596d;
-  margin-right:6px;
-}
-.hidden-cards-individual-tray button{
-  margin:3px;
-  border:1px solid #c5d4e0;
-  border-radius:6px;
-  background:#fff;
-  color:#315b82;
-  padding:5px 8px;
-  font-size:8px;
-  font-weight:900;
-  cursor:pointer;
-}
-.hidden-cards-individual-tray button:hover{
-  background:#eaf4ff;
 }
