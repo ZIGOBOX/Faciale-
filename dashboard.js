@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.14.5';
-const DASHBOARD_BUILD='2026-08-19 18:50';
+const DASHBOARD_VERSION='V1.14.6';
+const DASHBOARD_BUILD='2026-08-19 19:02';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -653,17 +653,12 @@ function renderNativeInterventions(data=db()){
 }
 
 
-/* ===== V1.14.5 — NOTES NATIVES ===== */
+/* ===== V1.14.6 — NOTES ===== */
 function dashboardVisibleNotes(data=db()){
   const rows=Array.isArray(data?.notes)?data.notes:[];
   return rows.filter(x=>{
     const s=norm(x.status||x.statut||x.state||'');
-    return ![
-      'archive','archivee',
-      'supprime','supprimee',
-      'cloture','cloturee',
-      'termine','terminee'
-    ].includes(s);
+    return !['archive','archivee','supprime','supprimee','cloture','cloturee','termine','terminee'].includes(s);
   });
 }
 function renderNativeNotes(data=db()){
@@ -672,29 +667,16 @@ function renderNativeNotes(data=db()){
   if(!box||!count)return;
   const rows=dashboardVisibleNotes(data);
   count.textContent=String(rows.length);
-  if(!rows.length){
-    box.innerHTML='<div class="notes-empty">Aucune note active.</div>';
-    return;
-  }
-  box.innerHTML=rows.map(x=>{
+  box.innerHTML=rows.length?rows.map(x=>{
     const title=x.title||x.titre||x.subject||'Note';
     const body=x.text||x.content||x.note||x.description||x.body||'';
-    const details=[
-      x.date||'',
-      x.time?`🕒 ${x.time}`:'',
-      x.author||x.agent||x.owner||'',
-      x.dueDate?`Échéance : ${x.dueDate}`:''
-    ].filter(Boolean).join(' • ');
-    return `<div class="notes-row">
-      <b>${esc(title)}</b>
-      ${body?`<p>${esc(body)}</p>`:''}
-      ${details?`<small>${esc(details)}</small>`:''}
-    </div>`;
-  }).join('');
+    const details=[x.date||'',x.time?`🕒 ${x.time}`:'',x.author||x.agent||x.owner||'',x.dueDate?`Échéance : ${x.dueDate}`:''].filter(Boolean).join(' • ');
+    return `<div class="notes-row"><b>${esc(title)}</b>${body?`<p>${esc(body)}</p>`:''}${details?`<small>${esc(details)}</small>`:''}</div>`;
+  }).join(''):'<div class="notes-empty">Aucune note active.</div>';
 }
 
-function renderAll(data){
-  renderNativeNotes(data);renderKpis(data);renderNativeInterventions(data);renderAgentNow(data);renderPlanning(data);renderUrgencies(data);renderPeriodic(data);renderDomains(data);renderCharts(data);
+function renderAll(data){renderNativeNotes(data);
+  renderKpis(data);renderNativeInterventions(data);renderAgentNow(data);renderPlanning(data);renderUrgencies(data);renderPeriodic(data);renderDomains(data);renderCharts(data);
   const d=new Date();$('todayTitle').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('lastUpdate').textContent='Mise à jour : '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
@@ -1202,7 +1184,6 @@ function themeColor(card){
   if(/intervention|planning|evolution/.test(t))return '#168bd2';
   if(/presence|agent|conformite|mise a jour/.test(t))return '#10a69a';
   if(/charge|repartition/.test(t))return '#f5a000';
-  if(/notes/.test(t))return '#8b5cf6';
   return '#738291';
 }
 function loadStripe(){
@@ -1254,7 +1235,6 @@ function preferredSize(card,cw){
   if(/controle.*retard/.test(t)) return {w:Math.min(520,cw),h:260};
   if(/etat des agents/.test(t)) return {w:Math.min(500,cw),h:190};
   if(/evolution|charge de travail|repartition/.test(t)) return {w:Math.min(430,cw),h:180};
-  if(/notes/.test(t)) return {w:Math.min(440,cw),h:220};
   if(/raccourcis/.test(t)) return {w:Math.min(440,cw),h:170};
   if(/donnees mises a jour/.test(t)) return {w:Math.min(520,cw),h:90};
   if(card.closest?.('.kpi-grid') || /controles periodiques|presence agents|actions urgentes|interventions ouvertes|planning du jour|conformite menage/.test(t))
@@ -1292,7 +1272,6 @@ function autoArrange(){
     if(/planning d'aujourd'hui/.test(t))return 31;
     if(/controles periodiques en retard/.test(t))return 32;
     if(/interventions ouvertes/.test(t))return 33;
-    if(/notes/.test(t))return 34;
     if(/raccourcis/.test(t))return 40;
     if(/donnees mises a jour/.test(t))return 41;
     return 50;
@@ -1629,3 +1608,106 @@ else init();
 })();
 
 setInterval(()=>{try{renderNativeNotes(db())}catch(_){}},2000);
+
+/* ===== V1.14.6 — NOTES VISIBLE + RESTAURATION 1 PAR 1 ===== */
+(function(){
+const NOTES_POS_KEY='pst_notes_position_v1146';
+
+function allCards(){return [...document.querySelectorAll('.dashboard-free-card')]}
+function cardTitle(c){return c.dataset.freeTitle||c.querySelector('.kpi-title,.panel-head h2,.panel-head h3,h2,h3')?.textContent?.trim()||c.id||'Carte'}
+function cardId(c,i){return c.dataset.freeId||c.id||`card-${i}`}
+function hidden(c){return c.dataset.hidden==='1'||c.style.display==='none'||c.classList.contains('free-hidden')}
+function canvas(){return document.getElementById('freeLayoutCanvas')||document.querySelector('.free-layout-canvas')}
+
+function ensureNotesVisible(){
+  const card=document.getElementById('notesNativePanel');
+  const c=canvas();
+  if(!card||!c)return;
+  card.classList.add('dashboard-free-card');
+  card.dataset.freeId=card.dataset.freeId||'notes-native-v1146';
+  card.dataset.freeTitle='Notes';
+
+  // If the layout engine has not moved it yet, move it into the same canvas.
+  if(card.parentElement!==c)c.appendChild(card);
+
+  // Add native drag/resize controls if missing (using same classes as the stable engine).
+  if(!card.querySelector('.free-card-close')){
+    const b=document.createElement('button');b.type='button';b.className='free-card-close';b.title='Masquer cette case';b.textContent='×';card.appendChild(b);
+  }
+  if(!card.querySelector('.free-resize-corner')){
+    const r=document.createElement('div');r.className='free-resize-corner';r.title='Tirer pour redimensionner';r.textContent='↘';card.appendChild(r);
+  }
+
+  let saved=null;
+  try{saved=JSON.parse(localStorage.getItem(NOTES_POS_KEY)||'null')}catch(_){}
+  if(saved){
+    card.style.left=(saved.x||20)+'px';card.style.top=(saved.y||420)+'px';
+    card.style.width=Math.max(300,saved.w||430)+'px';card.style.height=Math.max(160,saved.h||230)+'px';
+  }else{
+    // Visible immediately, not at the bottom of the page.
+    const cw=Math.max(c.clientWidth,900);
+    card.style.left=Math.max(20,cw-460)+'px';
+    card.style.top='420px';
+    card.style.width='430px';
+    card.style.height='230px';
+  }
+  card.style.zIndex='8';
+  card.style.display='';
+  card.dataset.hidden='0';
+
+  // Lightweight drag/resize for this newly added card, matching stable behavior.
+  if(card.dataset.notesDragReady!=='1'){
+    card.dataset.notesDragReady='1';
+    card.addEventListener('pointerdown',e=>{
+      if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900||e.button!==0||e.target.closest('button,input,.free-resize-corner'))return;
+      e.preventDefault();
+      const sx=e.clientX,sy=e.clientY,ox=parseFloat(card.style.left)||0,oy=parseFloat(card.style.top)||0,pid=e.pointerId;
+      try{card.setPointerCapture(pid)}catch(_){}
+      const move=ev=>{if(ev.pointerId!==pid)return;card.style.left=Math.max(0,Math.round((ox+ev.clientX-sx)/10)*10)+'px';card.style.top=Math.max(0,Math.round((oy+ev.clientY-sy)/10)*10)+'px'};
+      const end=ev=>{if(ev.pointerId!==pid)return;card.removeEventListener('pointermove',move);card.removeEventListener('pointerup',end);card.removeEventListener('pointercancel',end);saveNotes()};
+      card.addEventListener('pointermove',move);card.addEventListener('pointerup',end);card.addEventListener('pointercancel',end);
+    });
+    const rh=card.querySelector('.free-resize-corner');
+    rh.addEventListener('pointerdown',e=>{
+      if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900)return;
+      e.preventDefault();e.stopPropagation();
+      const sx=e.clientX,sy=e.clientY,sw=card.offsetWidth,sh=card.offsetHeight,pid=e.pointerId;
+      try{rh.setPointerCapture(pid)}catch(_){}
+      const move=ev=>{if(ev.pointerId!==pid)return;card.style.width=Math.max(300,Math.round((sw+ev.clientX-sx)/10)*10)+'px';card.style.height=Math.max(160,Math.round((sh+ev.clientY-sy)/10)*10)+'px'};
+      const end=ev=>{if(ev.pointerId!==pid)return;rh.removeEventListener('pointermove',move);rh.removeEventListener('pointerup',end);rh.removeEventListener('pointercancel',end);saveNotes()};
+      rh.addEventListener('pointermove',move);rh.addEventListener('pointerup',end);rh.addEventListener('pointercancel',end);
+    });
+    card.querySelector('.free-card-close').addEventListener('click',e=>{e.stopPropagation();card.dataset.hidden='1';card.style.display='none';renderHiddenDialog()});
+  }
+  function saveNotes(){
+    try{localStorage.setItem(NOTES_POS_KEY,JSON.stringify({x:parseFloat(card.style.left)||0,y:parseFloat(card.style.top)||0,w:card.offsetWidth,h:card.offsetHeight}))}catch(_){}
+  }
+}
+
+function renderHiddenDialog(){
+  const list=document.getElementById('hiddenCardsDialogList');if(!list)return;
+  const cards=allCards().filter(hidden);
+  list.innerHTML=cards.length?cards.map((c,i)=>`<div class="hidden-card-row"><span>${cardTitle(c)}</span><button type="button" data-restore-card="${cardId(c,i)}">Réafficher</button></div>`).join(''):'<div class="hidden-card-empty">Aucune carte masquée.</div>';
+}
+function restoreOne(id){
+  const cards=allCards();
+  const c=cards.find((x,i)=>cardId(x,i)===id);if(!c)return;
+  c.dataset.hidden='0';c.style.display='';c.classList.remove('free-hidden');
+  c.style.zIndex='100';
+  renderHiddenDialog();
+}
+function init(){
+  setTimeout(ensureNotesVisible,900);
+  setTimeout(ensureNotesVisible,1800);
+
+  const btn=document.getElementById('hiddenCardsBtn');
+  const dlg=document.getElementById('hiddenCardsDialog');
+  btn?.addEventListener('click',()=>{renderHiddenDialog();dlg?.showModal()});
+  document.getElementById('closeHiddenCardsDialog')?.addEventListener('click',()=>dlg?.close());
+  document.addEventListener('click',e=>{
+    const r=e.target.closest('[data-restore-card]');if(r){restoreOne(r.dataset.restoreCard)}
+    if(e.target.closest('.free-card-close'))setTimeout(renderHiddenDialog,50);
+  },true);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
