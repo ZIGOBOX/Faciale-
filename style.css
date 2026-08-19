@@ -742,3 +742,25 @@ body.free-layout-editing .stripe-picker-real{display:block!important}
   }
   .native-interventions-list{max-height:360px}
 }
+
+/* V1.14.1 — interactions correctes pour Interventions */
+#interventionsNativePanel.dashboard-free-card{
+  touch-action:none;
+  min-width:320px!important;
+  min-height:180px!important;
+}
+body.free-layout-editing #interventionsNativePanel.dashboard-free-card{
+  cursor:grab!important;
+}
+body.free-layout-editing #interventionsNativePanel.dashboard-free-card.free-dragging{
+  cursor:grabbing!important;
+}
+@media(max-width:899px){
+  #interventionsNativePanel.dashboard-free-card{
+    position:relative!important;
+    left:auto!important;
+    top:auto!important;
+    width:100%!important;
+    height:auto!important;
+  }
+}
