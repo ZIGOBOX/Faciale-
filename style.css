@@ -704,3 +704,17 @@ body.free-layout-editing .dashboard-free-card{outline:2px dashed var(--stripe)!i
    border-width:5px!important;
  }
 }
+
+/* V1.13.2 - bouton couleur pour entourage rayé */
+.stripe-color-btn{
+ display:none;position:absolute;left:5px;top:5px;z-index:2147483000;
+ width:28px;height:28px;border:1px solid #d6e1ea;border-radius:6px;background:#fff;
+ font-size:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16)
+}
+body.free-layout-editing .stripe-color-btn{display:block}
+.stripe-color-input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.dashboard-free-card{
+ background:
+  linear-gradient(#fff,#fff) padding-box,
+  repeating-linear-gradient(45deg,var(--stripe) 0 12px,var(--stripe2) 12px 24px) border-box!important
+}

@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.13.0';
-const DASHBOARD_BUILD='2026-08-18 21:12';
+const DASHBOARD_VERSION='V1.13.2';
+const DASHBOARD_BUILD='2026-08-19 15:40';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -1251,4 +1251,37 @@ if(document.readyState==='loading'){
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(apply,500));
  else setTimeout(apply,500);
  setInterval(apply,3000);
+})();
+
+/* V1.13.2 - couleurs des rayures personnalisables */
+(function(){
+ const KEY='pst_dashboard_stripe_colors_v1132';
+ const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return{}}};
+ const save=x=>{try{localStorage.setItem(KEY,JSON.stringify(x))}catch(_){}};
+ function id(card,i){return card.dataset.freeId||card.id||`card-${i}`}
+ function apply(){
+   const map=load();
+   [...document.querySelectorAll('.dashboard-free-card')].forEach((card,i)=>{
+     const c=map[id(card,i)];
+     if(c)card.style.setProperty('--stripe',c);
+     if(!card.querySelector('.stripe-color-btn')){
+       const b=document.createElement('button');
+       b.type='button'; b.className='stripe-color-btn'; b.textContent='🎨';
+       b.title='Changer la couleur des rayures';
+       const inp=document.createElement('input');
+       inp.type='color'; inp.className='stripe-color-input';
+       inp.value=c||'#168bd2';
+       b.onclick=e=>{e.preventDefault();e.stopPropagation();inp.click()};
+       inp.oninput=e=>{
+         const color=e.target.value;
+         card.style.setProperty('--stripe',color);
+         const m=load();m[id(card,i)]=color;save(m);
+       };
+       card.appendChild(b);card.appendChild(inp);
+     }
+   });
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(apply,400));
+ else setTimeout(apply,400);
+ new MutationObserver(()=>apply()).observe(document.documentElement,{childList:true,subtree:true});
 })();
