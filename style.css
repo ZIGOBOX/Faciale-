@@ -772,3 +772,166 @@ body.free-layout-editing #interventionsNativePanel.dashboard-free-card.free-drag
   color:#1f6d3d;
   font-weight:900;
 }
+
+/* ===== V1.14.3 — AGENTS QUI PASSENT AUTOMATIQUEMENT À LA LIGNE ===== */
+
+/* La case État des agents réagit à SA propre largeur */
+.agent-now-panel,
+#agentNowPanel,
+.dashboard-free-card:has(#agentNow),
+.dashboard-free-card:has(.agent-now-list){
+  container-type:inline-size!important;
+}
+
+/* Le contenu agents revient à la ligne */
+#agentNow,
+.agent-now-list,
+.agent-now-grid,
+.agent-now-panel .fast-list,
+.agent-now-panel .agent-list{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-content:flex-start!important;
+  gap:6px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  min-width:0!important;
+}
+
+/* Chaque agent devient une petite carte flexible */
+#agentNow > *,
+.agent-now-list > *,
+.agent-now-grid > *,
+.agent-now-panel .fast-list > *,
+.agent-now-panel .agent-list > *{
+  flex:1 1 150px!important;
+  min-width:135px!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+
+/* Case étroite : 1 agent par ligne */
+@container (max-width: 360px){
+  #agentNow > *,
+  .agent-now-list > *,
+  .agent-now-grid > *,
+  .agent-now-panel .fast-list > *,
+  .agent-now-panel .agent-list > *{
+    flex-basis:100%!important;
+    min-width:0!important;
+  }
+}
+
+/* Largeur moyenne : 2 agents par ligne */
+@container (min-width: 361px) and (max-width: 650px){
+  #agentNow > *,
+  .agent-now-list > *,
+  .agent-now-grid > *,
+  .agent-now-panel .fast-list > *,
+  .agent-now-panel .agent-list > *{
+    flex-basis:calc(50% - 6px)!important;
+  }
+}
+
+/* Grande case : plusieurs agents, puis retour automatique */
+@container (min-width: 651px){
+  #agentNow > *,
+  .agent-now-list > *,
+  .agent-now-grid > *,
+  .agent-now-panel .fast-list > *,
+  .agent-now-panel .agent-list > *{
+    flex-basis:150px!important;
+  }
+}
+
+/* Noms et statuts ne débordent pas */
+.agent-now-panel *,
+#agentNow *{
+  min-width:0;
+}
+.agent-now-panel b,
+.agent-now-panel small,
+#agentNow b,
+#agentNow small{
+  overflow-wrap:anywhere;
+}
+
+/* ===== V1.14.4 — NOTES ===== */
+.notes-native-panel{
+  --stripe:#8b5cf6;
+  min-width:300px!important;
+  min-height:160px!important;
+}
+.notes-count-badge{
+  display:inline-grid;
+  place-items:center;
+  min-width:26px;
+  height:22px;
+  padding:0 7px;
+  border-radius:12px;
+  background:#8b5cf6;
+  color:#fff;
+  font-size:10px;
+  font-weight:1000;
+}
+.notes-native-list{
+  height:calc(100% - 34px);
+  overflow:auto;
+  padding:4px 7px;
+}
+.note-native-row{
+  padding:8px 5px;
+  border-bottom:1px solid #edf1f4;
+}
+.note-native-row b{
+  display:block;
+  font-size:9px;
+  color:#2b3650;
+}
+.note-native-row p{
+  margin:3px 0;
+  font-size:8px;
+  color:#536274;
+  line-height:1.3;
+  white-space:pre-wrap;
+}
+.note-native-row small{
+  display:block;
+  font-size:7px;
+  color:#84909c;
+}
+.notes-empty{
+  padding:12px;
+  font-size:8px;
+  color:#7b8894;
+  font-style:italic;
+}
+
+/* ===== V1.14.4 — CARTES MASQUÉES 1 PAR 1 ===== */
+.hidden-cards-individual-tray{
+  display:none;
+  margin:8px 0;
+  padding:8px;
+  border:1px dashed #9cb5c9;
+  border-radius:8px;
+  background:#f6f9fc;
+  font-size:9px;
+}
+.hidden-cards-individual-tray strong{
+  color:#41596d;
+  margin-right:6px;
+}
+.hidden-cards-individual-tray button{
+  margin:3px;
+  border:1px solid #c5d4e0;
+  border-radius:6px;
+  background:#fff;
+  color:#315b82;
+  padding:5px 8px;
+  font-size:8px;
+  font-weight:900;
+  cursor:pointer;
+}
+.hidden-cards-individual-tray button:hover{
+  background:#eaf4ff;
+}
