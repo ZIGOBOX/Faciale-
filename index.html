@@ -22,7 +22,7 @@
   </div>
   <div class="top-actions">
     <span id="state" class="state">Connexion aux données…</span>
-    <button id="layoutEditBtn" class="refresh-btn" type="button">⚙ Organiser</button><button id="layoutResetBtn" class="refresh-btn" type="button" hidden>↺ Réinitialiser</button><button id="refreshTop" class="refresh-btn">↻ Actualiser</button>
+    <button id="layoutEditBtn" class="refresh-btn" type="button">⚙ Organiser</button><button id="layoutResetBtn" class="refresh-btn" type="button" hidden>↺ Réinitialiser</button><button id="autoLayoutBtn" class="refresh-btn" type="button" hidden>▦ Auto organiser</button><button id="refreshTop" class="refresh-btn">↻ Actualiser</button>
     <a class="pilotage-btn" href="/service-Technique-2/" target="_blank">Ouvrir Pilotage ↗</a>
   </div>
 </header>
@@ -113,6 +113,15 @@
       <div id="domainBars" class="domain-bars"></div>
     </article>
   </section>
+
+  
+    <section class="panel interventions-native-panel" id="interventionsNativePanel">
+      <div class="panel-head blue-head">
+        <h2>INTERVENTIONS OUVERTES</h2>
+        <span id="interventionsNativeCount" class="native-count-badge">0</span>
+      </div>
+      <div id="interventionsNativeList" class="native-interventions-list"></div>
+    </section>
 <section class="bottom-grid">
     <article class="panel">
       <div class="panel-head red-head"><h2>TOP 5 URGENCES</h2><button id="chooseTopUrgencies" class="choose-btn">Choisir</button></div>
@@ -158,8 +167,8 @@
 
 
 <footer class="version-footer">
-  <strong>DASHBOARD V1.13.2</strong>
-  <span>Build 2026-08-19 15:40</span>
+  <strong>DASHBOARD V1.14.0</strong>
+  <span>Build 2026-08-19 16:10</span>
   <span>Connexion : Pilotage Service Technique</span>
 </footer>
 
@@ -223,16 +232,5 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/service-Technique-2/supabase-config.js"></script>
 <script src="dashboard.js"></script>
-
-<template id="interventionsNativeTemplate">
-<section class="panel interventions-native-panel" id="interventionsNativePanel">
-      <div class="panel-head blue-head">
-        <h2>INTERVENTIONS OUVERTES</h2>
-        <span id="interventionsNativeCount" class="native-count-badge">0</span>
-      </div>
-      <div id="interventionsNativeList" class="native-interventions-list"></div>
-    </section>
-</template>
-
 </body>
 </html>

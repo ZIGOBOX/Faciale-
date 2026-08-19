@@ -669,52 +669,76 @@ body.free-layout-editing main{overflow:visible!important}
 .native-priority{background:#fff1e5;color:#b45b00}
 .native-empty{padding:12px;color:#7b8894;font-size:8px;font-style:italic}
 
-/* V1.12.9 — correctif mise en forme */
-#interventionsNativePanel{
-  box-sizing:border-box!important;
-  background:#fff!important;
-  border:2px solid #2f80ed!important;
+/* ===== V1.14.0 — RESPONSIVE PROPRE ===== */
+.dashboard-free-card{
+  --stripe:#738291;
+  --stripe2:#30383d;
+  border:7px solid transparent!important;
   border-radius:10px!important;
-  overflow:auto!important;
+  background:
+    linear-gradient(#fff,#fff) padding-box,
+    repeating-linear-gradient(45deg,var(--stripe) 0 12px,var(--stripe2) 12px 24px) border-box!important;
+  box-shadow:0 1px 6px rgba(15,35,55,.15)!important;
 }
-#interventionsNativePanel .native-interventions-list{
-  height:calc(100% - 34px)!important;
+body.free-layout-editing .dashboard-free-card{
+  outline:2px dashed var(--stripe)!important;
+  outline-offset:2px!important;
 }
 
-/* V1.13.0 - bordures rayees par famille */
-.dashboard-free-card{
- --stripe:#64748b;--stripe2:#263238;
- position:absolute;
- border:7px solid transparent!important;
- border-radius:10px!important;
- background:
-   linear-gradient(#fff,#fff) padding-box,
-   repeating-linear-gradient(45deg,var(--stripe) 0 12px,var(--stripe2) 12px 24px) border-box!important;
- box-shadow:0 1px 5px rgba(15,35,55,.13)!important;
+/* Real color picker, not a fake button */
+.stripe-picker-real{
+  display:none;
+  position:absolute!important;
+  top:6px!important;
+  left:6px!important;
+  z-index:2147483600!important;
+  width:31px!important;
+  height:31px!important;
+  padding:2px!important;
+  border:2px solid #fff!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  box-shadow:0 2px 7px rgba(0,0,0,.22)!important;
+  cursor:pointer!important;
 }
-.dashboard-free-card.theme-red{--stripe:#ef3038;--stripe2:#34383b}
-.dashboard-free-card.theme-blue{--stripe:#168bd2;--stripe2:#34383b}
-.dashboard-free-card.theme-green{--stripe:#10a69a;--stripe2:#34383b}
-.dashboard-free-card.theme-orange{--stripe:#f5a000;--stripe2:#34383b}
-.dashboard-free-card.theme-grey{--stripe:#738291;--stripe2:#34383b}
-body.free-layout-editing .dashboard-free-card{outline:2px dashed var(--stripe)!important;outline-offset:2px}
+body.free-layout-editing .stripe-picker-real{display:block!important}
+
+/* Interventions list */
+.interventions-native-panel{min-width:300px!important;min-height:180px!important}
+.native-count-badge{
+  display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 7px;
+  border-radius:12px;background:#2f80ed;color:#fff;font-size:10px;font-weight:1000
+}
+.native-interventions-list{height:calc(100% - 34px);overflow:auto;padding:4px 7px}
+.native-intervention-row{
+  display:grid;grid-template-columns:1fr auto;gap:7px;align-items:start;
+  padding:7px 4px;border-bottom:1px solid #edf1f4
+}
+.native-intervention-row b{display:block;font-size:9px;color:#243b50}
+.native-intervention-row small{display:block;margin-top:2px;font-size:7px;color:#748493;line-height:1.25}
+.native-intervention-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.native-intervention-badges span{padding:2px 5px;border-radius:9px;font-size:6.5px;font-weight:900;white-space:nowrap}
+.native-status{background:#eaf4ff;color:#256da9}
+.native-priority{background:#fff1e5;color:#b45b00}
+.native-empty{padding:12px;color:#7b8894;font-size:8px;font-style:italic}
+
+/* Mobile */
 @media(max-width:899px){
- .free-layout-canvas>.dashboard-free-card{
-   position:relative!important;
-   border-width:5px!important;
- }
-}
-
-/* V1.13.2 - bouton couleur pour entourage rayé */
-.stripe-color-btn{
- display:none;position:absolute;left:5px;top:5px;z-index:2147483000;
- width:28px;height:28px;border:1px solid #d6e1ea;border-radius:6px;background:#fff;
- font-size:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16)
-}
-body.free-layout-editing .stripe-color-btn{display:block}
-.stripe-color-input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-.dashboard-free-card{
- background:
-  linear-gradient(#fff,#fff) padding-box,
-  repeating-linear-gradient(45deg,var(--stripe) 0 12px,var(--stripe2) 12px 24px) border-box!important
+  .free-layout-canvas{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:10px!important;
+    min-height:0!important;
+    height:auto!important;
+  }
+  .free-layout-canvas>.dashboard-free-card{
+    position:relative!important;
+    left:auto!important;
+    top:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:90px!important;
+    border-width:5px!important;
+  }
+  .native-interventions-list{max-height:360px}
 }

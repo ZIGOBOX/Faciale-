@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.13.2';
-const DASHBOARD_BUILD='2026-08-19 15:40';
+const DASHBOARD_VERSION='V1.14.0';
+const DASHBOARD_BUILD='2026-08-19 16:10';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -877,6 +877,7 @@ function cards(){
     '.middle-grid > .panel',
     '.bottom-grid > .panel',
     '.links-panel',
+    '#interventionsNativePanel',
     '.footer-tools'
   ];
   const out=[];
@@ -1135,153 +1136,181 @@ else init();
 
 setInterval(()=>{try{renderNativeInterventions(db())}catch(_){}},2000);
 
-
-/* ===== V1.12.9 — insertion sûre de la case Interventions dans le canvas libre ===== */
+/* ===== V1.14.0 — AUTO ORGANISATION RESPONSIVE + COULEURS RAYÉES ===== */
 (function(){
-function addNativeInterventionsToCanvas(){
-  const canvas=document.getElementById('freeLayoutCanvas');
-  const tpl=document.getElementById('interventionsNativeTemplate');
-  if(!canvas||!tpl||document.getElementById('interventionsNativePanel'))return;
+const STRIPE_KEY='pst_dashboard_stripes_v1140';
+const AUTO_KEY='pst_dashboard_auto_v1140';
 
-  const fragment=tpl.content.cloneNode(true);
-  const panel=fragment.querySelector('#interventionsNativePanel');
-  if(!panel)return;
-
-  panel.classList.add('dashboard-free-card');
-  panel.dataset.freeId='interventions-ouvertes-native-v129';
-  panel.dataset.freeTitle='Interventions ouvertes';
-  panel.dataset.hidden='0';
-
-  // Add the same controls as other free cards.
-  const close=document.createElement('button');
-  close.type='button';
-  close.className='free-card-close';
-  close.title='Masquer cette case';
-  close.textContent='×';
-  panel.appendChild(close);
-
-  const resize=document.createElement('div');
-  resize.className='free-resize-corner';
-  resize.title='Tirer pour redimensionner';
-  resize.textContent='↘';
-  panel.appendChild(resize);
-
-  canvas.appendChild(panel);
-
-  // Default visible position, without modifying other cards.
-  panel.style.left='20px';
-  panel.style.top='560px';
-  panel.style.width='620px';
-  panel.style.height='300px';
-  panel.style.zIndex='2';
-
-  // Drag compatible with free layout mode
-  panel.addEventListener('pointerdown',e=>{
-    if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900||e.button!==0||e.target.closest('button,.free-resize-corner'))return;
-    e.preventDefault();
-    const sx=e.clientX,sy=e.clientY,ox=parseFloat(panel.style.left)||0,oy=parseFloat(panel.style.top)||0,pid=e.pointerId;
-    try{panel.setPointerCapture(pid)}catch(_){}
-    const move=ev=>{
-      if(ev.pointerId!==pid)return;
-      panel.style.left=Math.max(0,Math.round((ox+ev.clientX-sx)/10)*10)+'px';
-      panel.style.top=Math.max(0,Math.round((oy+ev.clientY-sy)/10)*10)+'px';
-    };
-    const end=ev=>{
-      if(ev.pointerId!==pid)return;
-      panel.removeEventListener('pointermove',move);
-      panel.removeEventListener('pointerup',end);
-      panel.removeEventListener('pointercancel',end);
-    };
-    panel.addEventListener('pointermove',move);
-    panel.addEventListener('pointerup',end);
-    panel.addEventListener('pointercancel',end);
-  });
-
-  resize.addEventListener('pointerdown',e=>{
-    if(!document.body.classList.contains('free-layout-editing')||window.innerWidth<900)return;
-    e.preventDefault();e.stopPropagation();
-    const sx=e.clientX,sy=e.clientY,sw=panel.offsetWidth,sh=panel.offsetHeight,pid=e.pointerId;
-    try{resize.setPointerCapture(pid)}catch(_){}
-    const move=ev=>{
-      if(ev.pointerId!==pid)return;
-      panel.style.width=Math.max(360,Math.round((sw+ev.clientX-sx)/10)*10)+'px';
-      panel.style.height=Math.max(180,Math.round((sh+ev.clientY-sy)/10)*10)+'px';
-    };
-    const end=ev=>{
-      if(ev.pointerId!==pid)return;
-      resize.removeEventListener('pointermove',move);
-      resize.removeEventListener('pointerup',end);
-      resize.removeEventListener('pointercancel',end);
-    };
-    resize.addEventListener('pointermove',move);
-    resize.addEventListener('pointerup',end);
-    resize.addEventListener('pointercancel',end);
-  });
-
-  close.addEventListener('click',e=>{
-    e.stopPropagation();
-    panel.style.display='none';
-  });
-
-  // Make sure content renders immediately.
-  try{renderNativeInterventions(db())}catch(_){}
+function cards(){
+  return [...document.querySelectorAll('.dashboard-free-card')];
 }
-if(document.readyState==='loading'){
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(addNativeInterventionsToCanvas,350));
-}else{
-  setTimeout(addNativeInterventionsToCanvas,350);
+function norm(v){
+  return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
-})();
+function cardName(card){
+  return card.dataset.freeTitle ||
+    card.querySelector('.kpi-title,.panel-head h2,.panel-head h3,h2,h3')?.textContent?.trim() ||
+    card.id || 'Case';
+}
+function cardKey(card,i){return card.dataset.freeId||card.id||`card-${i}`}
 
-/* V1.13.0 - classement couleur des cases */
-(function(){
- const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
- function apply(){
-  document.querySelectorAll('.dashboard-free-card').forEach(c=>{
-   c.classList.remove('theme-red','theme-blue','theme-green','theme-orange','theme-grey');
-   const t=norm(c.dataset.freeTitle||c.querySelector('.kpi-title,.panel-head h2,.panel-head h3,h2,h3')?.textContent||c.id);
-   let k='theme-grey';
-   if(/urgence|retard|controle periodique/.test(t)) k='theme-red';
-   else if(/intervention|planning|evolution/.test(t)) k='theme-blue';
-   else if(/presence|agent|conformite|mise a jour/.test(t)) k='theme-green';
-   else if(/charge|repartition/.test(t)) k='theme-orange';
-   c.classList.add(k);
+function themeColor(card){
+  const t=norm(cardName(card));
+  if(/urgence|retard|controle periodique/.test(t))return '#ef3038';
+  if(/intervention|planning|evolution/.test(t))return '#168bd2';
+  if(/presence|agent|conformite|mise a jour/.test(t))return '#10a69a';
+  if(/charge|repartition/.test(t))return '#f5a000';
+  return '#738291';
+}
+function loadStripe(){
+  try{return JSON.parse(localStorage.getItem(STRIPE_KEY)||'{}')||{}}catch(_){return{}}
+}
+function saveStripe(x){
+  try{localStorage.setItem(STRIPE_KEY,JSON.stringify(x))}catch(_){}
+}
+function addColorPickers(){
+  const saved=loadStripe();
+  cards().forEach((card,i)=>{
+    const key=cardKey(card,i);
+    const color=saved[key]||themeColor(card);
+    card.style.setProperty('--stripe',color);
+
+    let inp=card.querySelector('.stripe-picker-real');
+    if(!inp){
+      inp=document.createElement('input');
+      inp.type='color';
+      inp.className='stripe-picker-real';
+      inp.title='Couleur des rayures';
+      inp.value=color;
+      inp.addEventListener('pointerdown',e=>e.stopPropagation());
+      inp.addEventListener('click',e=>e.stopPropagation());
+      inp.addEventListener('input',e=>{
+        const c=e.target.value;
+        card.style.setProperty('--stripe',c);
+        const map=loadStripe();
+        map[key]=c;
+        saveStripe(map);
+      });
+      card.appendChild(inp);
+    }else inp.value=color;
   });
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(apply,500));
- else setTimeout(apply,500);
- setInterval(apply,3000);
-})();
+}
 
-/* V1.13.2 - couleurs des rayures personnalisables */
-(function(){
- const KEY='pst_dashboard_stripe_colors_v1132';
- const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return{}}};
- const save=x=>{try{localStorage.setItem(KEY,JSON.stringify(x))}catch(_){}};
- function id(card,i){return card.dataset.freeId||card.id||`card-${i}`}
- function apply(){
-   const map=load();
-   [...document.querySelectorAll('.dashboard-free-card')].forEach((card,i)=>{
-     const c=map[id(card,i)];
-     if(c)card.style.setProperty('--stripe',c);
-     if(!card.querySelector('.stripe-color-btn')){
-       const b=document.createElement('button');
-       b.type='button'; b.className='stripe-color-btn'; b.textContent='🎨';
-       b.title='Changer la couleur des rayures';
-       const inp=document.createElement('input');
-       inp.type='color'; inp.className='stripe-color-input';
-       inp.value=c||'#168bd2';
-       b.onclick=e=>{e.preventDefault();e.stopPropagation();inp.click()};
-       inp.oninput=e=>{
-         const color=e.target.value;
-         card.style.setProperty('--stripe',color);
-         const m=load();m[id(card,i)]=color;save(m);
-       };
-       card.appendChild(b);card.appendChild(inp);
-     }
-   });
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(apply,400));
- else setTimeout(apply,400);
- new MutationObserver(()=>apply()).observe(document.documentElement,{childList:true,subtree:true});
+function visibleCards(){
+  return cards().filter(c=>c.style.display!=='none' && c.dataset.hidden!=='1');
+}
+function canvas(){
+  return document.getElementById('freeLayoutCanvas') || document.querySelector('.free-layout-canvas');
+}
+
+function preferredSize(card,cw){
+  const t=norm(cardName(card));
+  if(/planning d'aujourd'hui|planning/.test(t)) return {w:Math.min(620,cw),h:260};
+  if(/interventions ouvertes/.test(t)) return {w:Math.min(620,cw),h:340};
+  if(/top 5 urgences/.test(t)) return {w:Math.min(520,cw),h:240};
+  if(/controle.*retard/.test(t)) return {w:Math.min(520,cw),h:260};
+  if(/etat des agents/.test(t)) return {w:Math.min(500,cw),h:190};
+  if(/evolution|charge de travail|repartition/.test(t)) return {w:Math.min(430,cw),h:180};
+  if(/raccourcis/.test(t)) return {w:Math.min(440,cw),h:170};
+  if(/donnees mises a jour/.test(t)) return {w:Math.min(520,cw),h:90};
+  if(card.closest?.('.kpi-grid') || /controles periodiques|presence agents|actions urgentes|interventions ouvertes|planning du jour|conformite menage/.test(t))
+    return {w:Math.min(270,cw),h:115};
+  return {w:Math.min(380,cw),h:170};
+}
+
+function autoArrange(){
+  const c=canvas(); if(!c)return;
+  const all=visibleCards();
+  const cw=Math.max(320,c.clientWidth);
+  const gap=12;
+
+  if(window.innerWidth<900){
+    all.forEach(card=>{
+      card.style.position='relative';
+      card.style.left='auto';
+      card.style.top='auto';
+      card.style.width='100%';
+      card.style.height='auto';
+    });
+    c.style.height='auto';
+    return;
+  }
+
+  // Semantic order: KPI -> agents/charts -> operational lists -> utilities
+  const score=card=>{
+    const t=norm(cardName(card));
+    if(/controles periodiques$|presence agents|actions urgentes|interventions ouvertes$|planning du jour|conformite menage/.test(t))return 10;
+    if(/etat des agents/.test(t))return 20;
+    if(/evolution/.test(t))return 21;
+    if(/repartition/.test(t))return 22;
+    if(/charge de travail/.test(t))return 23;
+    if(/top 5/.test(t))return 30;
+    if(/planning d'aujourd'hui/.test(t))return 31;
+    if(/controles periodiques en retard/.test(t))return 32;
+    if(/interventions ouvertes/.test(t))return 33;
+    if(/raccourcis/.test(t))return 40;
+    if(/donnees mises a jour/.test(t))return 41;
+    return 50;
+  };
+  all.sort((a,b)=>score(a)-score(b));
+
+  let x=0,y=0,rowH=0;
+  for(const card of all){
+    card.style.position='absolute';
+    const s=preferredSize(card,cw-20);
+    let w=Math.min(s.w,cw);
+    let h=s.h;
+
+    if(x>0 && x+w>cw){
+      x=0;
+      y+=rowH+gap;
+      rowH=0;
+    }
+
+    card.style.left=Math.round(x/10)*10+'px';
+    card.style.top=Math.round(y/10)*10+'px';
+    card.style.width=Math.max(180,w)+'px';
+    card.style.height=Math.max(80,h)+'px';
+    card.style.zIndex='1';
+
+    x+=w+gap;
+    rowH=Math.max(rowH,h);
+  }
+  c.style.height=(y+rowH+30)+'px';
+  try{localStorage.setItem(AUTO_KEY,new Date().toISOString())}catch(_){}
+}
+
+function init(){
+  setTimeout(()=>{
+    addColorPickers();
+
+    // Force a fresh clean layout for this new version once.
+    const done=localStorage.getItem(AUTO_KEY);
+    if(!done)autoArrange();
+
+    const auto=document.getElementById('autoLayoutBtn');
+    if(auto){
+      auto.hidden=!document.body.classList.contains('free-layout-editing');
+      auto.onclick=e=>{e.preventDefault();autoArrange()};
+    }
+
+    const edit=document.getElementById('layoutEditBtn');
+    if(edit){
+      edit.addEventListener('click',()=>{
+        setTimeout(()=>{
+          if(auto)auto.hidden=!document.body.classList.contains('free-layout-editing');
+          addColorPickers();
+        },20);
+      });
+    }
+  },700);
+
+  window.addEventListener('resize',()=>{
+    if(window.innerWidth<900)autoArrange();
+  });
+
+  new MutationObserver(()=>addColorPickers()).observe(document.body,{childList:true,subtree:true});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+else init();
 })();
