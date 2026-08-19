@@ -764,3 +764,11 @@ body.free-layout-editing #interventionsNativePanel.dashboard-free-card.free-drag
     height:auto!important;
   }
 }
+
+/* V1.14.2 — bouton restauration des cases */
+#showAllCardsBtn{
+  border-color:#b8d5c3;
+  background:#f2fbf5;
+  color:#1f6d3d;
+  font-weight:900;
+}

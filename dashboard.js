@@ -1,5 +1,5 @@
-const DASHBOARD_VERSION='V1.14.1';
-const DASHBOARD_BUILD='2026-08-19 16:18';
+const DASHBOARD_VERSION='V1.14.2';
+const DASHBOARD_BUILD='2026-08-19 16:24';
 console.info('Dashboard',DASHBOARD_VERSION,'Build',DASHBOARD_BUILD);
 'use strict';
 
@@ -1480,6 +1480,105 @@ function integrate(){
 function init(){
   [200,500,1000,1800,3000].forEach(ms=>setTimeout(integrate,ms));
 }
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+else init();
+})();
+
+/* ===== V1.14.2 — RESTAURATION DE TOUTES LES CASES ===== */
+(function(){
+const MIGRATION_KEY='pst_dashboard_restore_all_v1142_done';
+
+function allDashboardCards(){
+  return [...document.querySelectorAll('.dashboard-free-card')];
+}
+
+function showAllCards(){
+  const cards=allDashboardCards();
+  cards.forEach(card=>{
+    card.style.display='';
+    card.dataset.hidden='0';
+    card.classList.remove(
+      'free-hidden','case-hidden','is-hidden'
+    );
+  });
+
+  // Remove "hidden" flags from the known historic layout stores
+  const keys=[
+    'pst_dashboard_free_layout_v1121',
+    'pst_dashboard_free_layout_v1120',
+    'pst_dashboard_layout_v1113',
+    'pst_dashboard_cases_v1109',
+    'pst_dashboard_item_layout_v1108',
+    'pst_dashboard_layout_v1107',
+    'pst_interventions_layout_v1141',
+    'pst_interventions_pc_pos_v1131',
+    'pst_open_interventions_panel_v123',
+    'pst_interventions_a_faire_panel_v124',
+    'pst_interventions_ouvertes_panel_v125'
+  ];
+  keys.forEach(key=>{
+    try{
+      const raw=localStorage.getItem(key);
+      if(!raw)return;
+      const obj=JSON.parse(raw);
+      if(!obj||typeof obj!=='object')return;
+      if(Array.isArray(obj)){
+        obj.forEach(x=>{if(x&&typeof x==='object')x.hidden=false});
+      }else{
+        if('hidden' in obj)obj.hidden=false;
+        Object.values(obj).forEach(x=>{
+          if(x&&typeof x==='object'&&'hidden' in x)x.hidden=false;
+        });
+      }
+      localStorage.setItem(key,JSON.stringify(obj));
+    }catch(_){}
+  });
+
+  // Make sure the interventions card is visible too
+  const interv=document.getElementById('interventionsNativePanel');
+  if(interv){
+    interv.style.display='';
+    interv.dataset.hidden='0';
+    interv.classList.remove('free-hidden','case-hidden','is-hidden');
+  }
+
+  // Trigger auto-arrange if available
+  const auto=document.getElementById('autoLayoutBtn');
+  if(auto && typeof auto.click==='function'){
+    setTimeout(()=>auto.click(),120);
+  }
+}
+
+function syncButtonVisibility(){
+  const edit=document.body.classList.contains('free-layout-editing');
+  const btn=document.getElementById('showAllCardsBtn');
+  if(btn)btn.hidden=!edit;
+}
+
+function init(){
+  // One-time migration for this new version
+  if(!localStorage.getItem(MIGRATION_KEY)){
+    setTimeout(()=>{
+      showAllCards();
+      try{localStorage.setItem(MIGRATION_KEY,'1')}catch(_){}
+    },1200);
+  }
+
+  const btn=document.getElementById('showAllCardsBtn');
+  if(btn)btn.addEventListener('click',e=>{
+    e.preventDefault();
+    showAllCards();
+  });
+
+  const editBtn=document.getElementById('layoutEditBtn');
+  if(editBtn){
+    editBtn.addEventListener('click',()=>setTimeout(syncButtonVisibility,30));
+  }
+
+  syncButtonVisibility();
+  setTimeout(syncButtonVisibility,800);
+}
+
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
 else init();
 })();
