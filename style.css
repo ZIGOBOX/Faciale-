@@ -856,53 +856,33 @@ body.free-layout-editing #interventionsNativePanel.dashboard-free-card.free-drag
   overflow-wrap:anywhere;
 }
 
-/* ===== V1.14.5 — CARTE NOTES ===== */
+/* V1.14.6 — NOTES visible avec rayures */
 .notes-native-panel{
-  --stripe:#8b5cf6;
-  min-width:280px!important;
-  min-height:150px!important;
+  --stripe:#8b5cf6!important;
+  --stripe2:#34383b!important;
+  border:7px solid transparent!important;
+  border-radius:10px!important;
+  background:
+    linear-gradient(#fff,#fff) padding-box,
+    repeating-linear-gradient(45deg,var(--stripe) 0 12px,var(--stripe2) 12px 24px) border-box!important;
 }
-.notes-count-badge{
-  display:inline-grid;
-  place-items:center;
-  min-width:26px;
-  height:22px;
-  padding:0 7px;
-  border-radius:12px;
-  background:#8b5cf6;
-  color:#fff;
-  font-size:10px;
-  font-weight:1000;
-}
-.notes-native-list{
-  height:calc(100% - 34px);
-  overflow:auto;
-  padding:4px 7px;
-}
-.notes-row{
-  padding:8px 5px;
-  border-bottom:1px solid #edf1f4;
-}
-.notes-row b{
-  display:block;
-  font-size:9px;
-  color:#2b3650;
-}
-.notes-row p{
-  margin:3px 0;
-  font-size:8px;
-  color:#536274;
-  line-height:1.3;
-  white-space:pre-wrap;
-}
-.notes-row small{
-  display:block;
-  font-size:7px;
-  color:#84909c;
-}
-.notes-empty{
-  padding:12px;
-  font-size:8px;
-  color:#7b8894;
-  font-style:italic;
-}
+.notes-count-badge{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 7px;border-radius:12px;background:#8b5cf6;color:#fff;font-size:10px;font-weight:1000}
+.notes-native-list{height:calc(100% - 34px);overflow:auto;padding:4px 7px}
+.notes-row{padding:8px 5px;border-bottom:1px solid #edf1f4}
+.notes-row b{display:block;font-size:9px;color:#2b3650}
+.notes-row p{margin:3px 0;font-size:8px;color:#536274;line-height:1.3;white-space:pre-wrap}
+.notes-row small{display:block;font-size:7px;color:#84909c}
+.notes-empty{padding:12px;font-size:8px;color:#7b8894;font-style:italic}
+
+/* Vrai panneau de restauration individuelle */
+.hidden-cards-dialog{border:0;border-radius:12px;padding:0;width:min(560px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.hidden-cards-dialog::backdrop{background:rgba(15,23,42,.45)}
+.hidden-cards-dialog-box{background:#fff}
+.hidden-cards-dialog-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #e6ebf0}
+.hidden-cards-dialog-head strong{font-size:15px}
+.hidden-cards-dialog-head button{width:30px;height:30px;border:0;border-radius:50%;background:#eef2f6;font-size:20px;cursor:pointer}
+.hidden-cards-dialog-list{padding:10px;max-height:55vh;overflow:auto}
+.hidden-card-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px;border-bottom:1px solid #edf1f4}
+.hidden-card-row span{font-size:10px;font-weight:800}
+.hidden-card-row button{border:1px solid #b9d0e2;border-radius:7px;background:#eef7ff;color:#1d629c;padding:6px 9px;font-size:9px;font-weight:900;cursor:pointer}
+.hidden-card-empty{padding:12px;font-size:10px;color:#7b8894}
