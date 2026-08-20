@@ -1,0 +1,9 @@
+V147.57 — Historique ménage exhaustif
+
+- Une salle précise (ex. Bâtiment A > RDC > 106) retrouve tous ses contrôles enregistrés.
+- Les anciens contrôles principaux sont reconstruits automatiquement, même si leur ancien miroir historique était incomplet.
+- Un contrôle « Secteur entier » est rattaché à toutes les salles/localisations du secteur.
+- Un contrôle « Zone entière » est rattaché à tous les locaux du secteur choisi (ou de l’étage si aucun secteur n’est précisé).
+- Le formulaire Nouveau contrôle ménage possède maintenant un champ Secteur.
+- Depuis la page Historique, le bouton Nouveau contrôle transmet bâtiment, étage, secteur et sélection de locaux au formulaire.
+- Les contrôles multiples sont visibles dans l’historique de chaque local concerné.

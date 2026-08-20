@@ -1,0 +1,9 @@
+V147.63 — Vérification historique ménage tous bâtiments
+
+- Vérification du référentiel complet des bâtiments utilisés par le formulaire principal.
+- Ajout dans le référentiel historique : Demi-pension, Gymnase et Cour (ils manquaient).
+- Conservation automatique des bâtiments/salles personnalisés déjà enregistrés : aucun reset de configuration.
+- Migration douce : les bâtiments manquants sont ajoutés aux configurations existantes.
+- Correction de la comparaison des noms de bâtiments pour éviter les faux rapprochements avec les lettres seules (ex. E / Extension).
+- Extension, Algeco, bâtiments A/B/H/G/E/F, Demi-pension, Gymnase et Cour sont désormais couverts par l’historique.
+- Les contrôles principaux sont toujours reconstruits à chaque lecture pour ne pas perdre les anciens contrôles.

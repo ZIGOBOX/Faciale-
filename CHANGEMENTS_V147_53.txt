@@ -1,0 +1,4 @@
+V147.53 — correction mémorisation des cases de locaux
+- Les cases cochées/décochées conservent leur état.
+- Tout sélectionner / Tout décocher conservent la sélection.
+- Version affichée mise à jour en V147.53.

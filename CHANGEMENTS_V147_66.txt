@@ -1,0 +1,7 @@
+V147.66 — 20/08/2026
+- Correction définitive de la suppression des contrôles ménage avec marqueurs de suppression persistants.
+- Empêche un ancien contrôle supprimé de réapparaître après fusion/synchronisation Supabase.
+- Suppression de la fiche principale et de tous ses miroirs d’historique.
+- Mode hors ligne : suppression conservée puis synchronisée au retour du réseau.
+- Affichage PC du contrôle ménage compacté : davantage de locaux par ligne et historique moins haut.
+- Version/cache forcés en 147.66.

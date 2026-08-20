@@ -1,0 +1,9 @@
+V147.54 — clarification Contrôle ménage / Historique
+
+- La zone supérieure est maintenant clairement intitulée « Historique des contrôles ménage par local ».
+- La sélection Bâtiment / Étage / Secteur / Salle(s) sert à consulter les anciens contrôles.
+- Ajout d’un bouton « + Nouveau contrôle » directement dans l’en-tête de l’historique.
+- Ce bouton ouvre le formulaire de contrôle ménage existant, sans modifier son fonctionnement.
+- La zone de saisie générale est renommée « Nouveau contrôle ménage & suivi général ».
+- La mémorisation des cases cochées/décochées de la V147.53 est conservée.
+- Version affichée : V147.54.

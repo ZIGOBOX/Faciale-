@@ -1,0 +1,8 @@
+V147.64 — 20/08/2026
+
+- Correction suppression contrôles ménage : une suppression est écrite directement dans Supabase pour éviter la réapparition par fusion avec une ancienne copie serveur.
+- Extension : ajout du référentiel complet dans les contrôles ménage et les locaux de toute l’application : Gymnase, Salle de musculation, Sanitaires, Circulation, Vestiaires, Salle des professeurs, Rangement, Atelier, Chaufferie.
+- Demi-pension : ajout du référentiel complet : Self, Cuisine, Côté technique eau chaude, Sanitaires filles, Sanitaires garçons, Hall du self, Laverie, Circulation cuisine, Espace détente, Vestiaire agents filles, Vestiaire agents garçons, Bureau, Lingerie.
+- Migration non destructive : les locaux existants sont conservés et les locaux manquants sont ajoutés automatiquement.
+- Historique : les contrôles existants restent conservés et les nouveaux référentiels sont utilisés pour retrouver les contrôles par bâtiment/local.
+- Version/cache forcés en 147.64.

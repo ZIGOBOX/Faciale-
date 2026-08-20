@@ -1,0 +1,8 @@
+Pilotage Service Technique — V147.56 — 19/08/2026
+
+CORRECTION HISTORIQUE CONTRÔLE MÉNAGE
+- Les contrôles saisis via « Nouveau contrôle ménage » sont maintenant reconstruits directement depuis la collection principale `cleaning` si nécessaire.
+- L'historique par salle ne dépend plus uniquement du miroir `cleaningRoomChecks`.
+- Un contrôle déjà existant est rafraîchi sans doublon.
+- Cache des fichiers JS forcé en V147.56 pour éviter qu'un ancien room-cleaning.js reste chargé sur Android/Chrome.
+- Numéro de version affiché harmonisé en V147.56.

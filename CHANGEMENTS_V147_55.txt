@@ -1,0 +1,15 @@
+Pilotage Service Technique — V147.55 — 19/08/2026
+
+CORRECTIONS
+- Bouton Enregistrer des formulaires : retour visuel "Enregistrement…" pendant la sauvegarde.
+- Si Supabase tarde ou répond mal, la saisie est conservée localement et mise en attente de synchronisation au lieu de donner l'impression que le bouton ne fonctionne pas.
+- Contrôle ménage : après enregistrement du formulaire principal, le contrôle est également ajouté à l'historique par local.
+- Historique ménage par local : stockage relié à cleaningRoomChecks dans l'état principal/Supabase, avec reprise de l'ancien historique local.
+- Historique des salles : séparation par bâtiment / étage / secteur pour éviter de mélanger, par exemple, les sanitaires de plusieurs étages.
+- Cases de sélection des salles : conservation du comportement mémorisé de la V147.53/V147.54.
+- Version affichée : V147.55.
+
+VERIFICATIONS TECHNIQUES
+- Syntaxe JavaScript vérifiée sur tous les fichiers JS présents dans ce ZIP.
+- Contrôle statique des boutons et formulaires du noyau app.js + room-cleaning.js.
+- Le ZIP d'origine référence aussi supabase-config.js, notification-center.js, weather-waste.js et room-prep.js sans les embarquer. Ces fichiers doivent rester présents dans le dépôt GitHub existant comme dans les versions précédentes.

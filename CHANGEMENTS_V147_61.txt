@@ -1,0 +1,9 @@
+V147.61 — Historique ménage exhaustif / Extension
+
+- Corrige le rattachement des contrôles du bâtiment Extension.
+- Le formulaire principal utilise Rez-de-chaussée / 1er étage alors que le référentiel historique Extension était regroupé sous Locaux : ces libellés sont désormais compatibles.
+- Un contrôle ne disparaît plus de l’historique à cause d’une différence de libellé d’étage ou de secteur.
+- Les contrôles « Zone entière / Secteur entier » sont rattachés à tous les locaux concernés.
+- Les contrôles sur un local précis sont recherchés par numéro, nom et type.
+- En dernier recours, un contrôle reste rattaché au bâtiment plutôt que d’être perdu de l’historique.
+- Les contrôles existants sont reconstruits à la lecture : les anciens contrôles Extension peuvent donc réapparaître sans ressaisie.

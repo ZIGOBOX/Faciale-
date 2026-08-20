@@ -1,0 +1,8 @@
+V147.60 — Vérification du bouton Enregistrer du formulaire Contrôle ménage
+
+- Vérification du câblage du bouton Enregistrer : formulaire modal -> modalHandler -> commitFormRecordVerified.
+- Vérification de présence du contrôle dans db.cleaning avant fermeture du formulaire.
+- Relance de la reconstruction de l'historique après enregistrement.
+- Le formulaire ne se ferme pas si le contrôle principal n'est pas retrouvé après sauvegarde.
+- Version et paramètres de cache des scripts passés en 147.60 pour empêcher Android/Chrome de réutiliser app.js ou room-cleaning.js de la V147.63.
+- Syntaxe JavaScript vérifiée.

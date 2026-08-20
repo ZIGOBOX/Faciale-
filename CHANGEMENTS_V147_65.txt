@@ -1,0 +1,9 @@
+V147.65 — CORRECTION RESPONSIVE DES COLONNES
+
+- Les tableaux ne compressent plus toutes les informations dans des colonnes trop étroites.
+- Largeur automatique des colonnes avec défilement horizontal sur téléphone.
+- Les grands tableaux (maintenance, demandes, travaux, contrôles, planning, absences, etc.) gardent une largeur lisible.
+- Les textes longs reviennent proprement à la ligne sans écraser les autres colonnes.
+- Les filtres et formulaires se réorganisent sur mobile.
+- Les impressions utilisent toute la largeur disponible et redistribuent les colonnes.
+- Version/cache forcés en 147.65.
