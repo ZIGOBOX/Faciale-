@@ -1,6 +1,6 @@
 
 (()=>{'use strict';
-const KEY='pst_cleaning_rooms_v103', CK='pst_cleaning_checks_v103', SELKEY='pst_cleaning_room_selection_v147_53', CONFIG_VERSION='147.69';
+const KEY='pst_cleaning_rooms_v103', CK='pst_cleaning_checks_v103', SELKEY='pst_cleaning_room_selection_v147_53', CONFIG_VERSION='147.64';
 const $=x=>document.getElementById(x), uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const room=(number,name,type='Salle')=>({id:uid(),number,name,type});
 const std=(base)=>Array.from({length:9},(_,i)=>room(String(base+i),'','Salle'));
@@ -280,8 +280,7 @@ function loadChecks(){
   const main=window.PSTMainState?.get?.();
   const cloud=Array.isArray(main?.cleaningRoomChecks)?clone(main.cleaningRoomChecks):[];
   const local=JSON.parse(localStorage.getItem(CK)||'[]')||[];
-  const deletedIds=new Set((Array.isArray(main?.cleaningDeletedIds)?main.cleaningDeletedIds:[]).map(String).filter(Boolean));
-  const mains=(Array.isArray(main?.cleaning)?main.cleaning:[]).filter(x=>!deletedIds.has(String(x?.id||'')));
+  const mains=Array.isArray(main?.cleaning)?main.cleaning:[];
   const mainIds=new Set(mains.map(x=>String(x?.id||'')).filter(Boolean));
 
   // V147.57 : les contrôles principaux sont reconstruits à chaque lecture.
@@ -292,8 +291,6 @@ function loadChecks(){
   const add=c=>{
    if(!c)return;
    const source=String(c.sourceMainId||'');
-   const cid=String(c.id||'');
-   if((source&&deletedIds.has(source))||(cid&&deletedIds.has(cid))||deletedIds.has(cid.replace(/^main-/,'')))return;
    if(source&&mainIds.has(source))return; // le contrôle principal sera reconstruit ci-dessous
    const k=String(c.id||source||'');
    if(k&&seen.has(k))return;
@@ -652,43 +649,35 @@ async function deleteHistoryCheck(id){
  if(!confirm('Supprimer définitivement ce contrôle ménage ?\n\nS’il concernait un secteur entier, il sera retiré de l’historique de TOUS les locaux concernés.'))return;
  try{
   const main=window.PSTMainState?.get?.();
-  const source=String(c.sourceMainId||String(id||'').replace(/^main-/,''));
-  const tombstones=new Set((Array.isArray(main?.cleaningDeletedIds)?main.cleaningDeletedIds:[]).map(String).filter(Boolean));
-  if(source)tombstones.add(source);
-  if(id)tombstones.add(String(id));
-  if(main){
-    if(Array.isArray(main.cleaning)) main.cleaning=main.cleaning.filter(x=>String(x?.id||'')!==source && String(x?.id||'')!==String(id));
-    main.cleaningDeletedIds=[...tombstones];
-  }
-  const arr=loadChecks().filter(x=>{
-    const xid=String(x?.id||''), xs=String(x?.sourceMainId||'');
-    return xid!==String(id) && (!source||xs!==source) && !tombstones.has(xid) && !tombstones.has(xs) && !tombstones.has(xid.replace(/^main-/,''));
-  });
+  const source=String(c.sourceMainId||'');
+  if(main&&source&&Array.isArray(main.cleaning)) main.cleaning=main.cleaning.filter(x=>String(x?.id||'')!==source);
+  let arr=loadChecks().filter(x=>String(x.id)!==String(id)&&(!source||String(x.sourceMainId||'')!==source));
   localStorage.setItem(CK,JSON.stringify(arr));
-  if(main)main.cleaningRoomChecks=clone(arr);
-  renderHistory();renderSelectedHistory();
-  let res={ok:true,offline:false};
-  if(navigator.onLine && window.PSTMainState?.persistStateDirect){
-    res=await window.PSTMainState.persistStateDirect({
-      label:'Suppression contrôle ménage',
-      verify:(saved)=>{
-        const deleted=new Set((saved?.cleaningDeletedIds||[]).map(String));
-        const stillMain=source&&Array.isArray(saved?.cleaning)&&saved.cleaning.some(x=>String(x?.id||'')===source);
-        const stillHist=Array.isArray(saved?.cleaningRoomChecks)&&saved.cleaningRoomChecks.some(x=>String(x?.id||'')===String(id)||(source&&String(x?.sourceMainId||'')===source));
-        return deleted.has(source||String(id))&&!stillMain&&!stillHist;
-      }
-    });
-  }else{
+  if(main){
+    main.cleaningRoomChecks=clone(arr);
     window.PSTMainState?.save?.(false);
-    res={ok:true,offline:true};
   }
-  if(!res?.ok)throw new Error(res?.error||'Suppression non confirmée par le serveur');
-  alert(res.offline?'Contrôle supprimé sur cet appareil. La suppression sera synchronisée au retour du réseau.':'Contrôle ménage supprimé définitivement.');
- }catch(e){
-  console.error('Suppression contrôle ménage',e);
-  alert('La suppression est conservée localement, mais la confirmation Supabase a échoué. Le contrôle restera masqué et la synchronisation sera retentée.');
-  try{window.PSTMainState?.save?.(false)}catch(_){ }
- }
+  renderHistory();renderSelectedHistory();
+  // IMPORTANT : une suppression ne doit pas être refusionnée avec l'ancienne copie serveur,
+  // sinon le contrôle supprimé réapparaît. On écrit l'état courant directement dans Supabase.
+  try{
+    if(window.PSTMainState?.persistStateDirect){
+      const res=await window.PSTMainState.persistStateDirect({
+        label:'Suppression contrôle ménage',
+        verify:(saved)=>{
+          const stillMain=source&&Array.isArray(saved?.cleaning)&&saved.cleaning.some(x=>String(x?.id||'')===source);
+          const stillHist=Array.isArray(saved?.cleaningRoomChecks)&&saved.cleaningRoomChecks.some(x=>String(x?.id||'')===String(id)|| (source&&String(x?.sourceMainId||'')===source));
+          return !stillMain&&!stillHist;
+        }
+      });
+      if(!res?.ok)throw new Error(res?.error||'Suppression non confirmée par le serveur');
+    }else{
+      const res=await window.PSTMainState?.persistNow?.();
+      if(res&&!res.ok&&!res.offline)throw new Error('Suppression non enregistrée');
+    }
+  }catch(e){console.warn('Suppression contrôle ménage',e);alert('Le contrôle a été supprimé localement, mais la suppression serveur n’est pas confirmée. Réessayez lorsque la connexion est disponible.');return}
+  alert('Contrôle ménage supprimé définitivement.');
+ }catch(e){console.error(e);alert('La suppression n’a pas pu être terminée. Réessayez.');}
 }
 
 function renderHistory(){
