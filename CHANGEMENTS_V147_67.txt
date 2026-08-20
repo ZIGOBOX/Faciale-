@@ -1,0 +1,7 @@
+V147.67 — ROLLBACK STABLE + CORRECTION SUPPRESSION CONTROLES
+
+- Base restaurée exactement depuis V147.65 pour annuler les changements d’affichage V147.66 sur PC et Android.
+- Aucun style compact V147.66 conservé.
+- Seule la correction ciblée de suppression des contrôles ménage est conservée.
+- Les contrôles supprimés reçoivent un marqueur persistant pour éviter leur réapparition après synchronisation.
+- Historique, référentiel Extension/Demi-pension et colonnes responsive de V147.65 conservés.

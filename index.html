@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#075ca8">
-  <title>Pilotage Service Technique V147.66</title>
+  <title>Pilotage Service Technique V147.67</title>
   <link rel="icon" href="./assets/logo-service-technique.png">
-  <link rel="stylesheet" href="./styles.css?v=147.66">
+  <link rel="stylesheet" href="./styles.css?v=147.67">
 
 <style id="v14713-fixes">
 /* Barres horizontales locales aux plannings : elles ne repartent plus avec la page. */
@@ -325,7 +325,7 @@
 </style>
 
 <style id="v14765-responsive-columns-fix">
-/* V147.66 — tableaux et informations : conserver des colonnes lisibles au lieu de tout compresser. */
+/* V147.67 — tableaux et informations : conserver des colonnes lisibles au lieu de tout compresser. */
 .table-wrap,
 .desktop-table,
 [id$="TableWrap"],
@@ -518,32 +518,13 @@ input, select, textarea, button{
 }
 </style>
 
-
-<style id="v14766-cleaning-desktop-compact">
-/* PC : historique ménage compact, sans pages inutilement très longues. */
-@media (min-width: 1000px){
-  #cleaning .rc-main-panel{padding:16px 20px!important}
-  #cleaning .rc-rooms{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important}
-  #cleaning .rc-room{min-height:84px!important;padding:10px!important}
-  #cleaning .rc-selected-history{margin-top:14px!important}
-  #cleaning .rc-history-preview-card{padding:12px 16px!important;margin:0 0 10px!important}
-  #cleaning .rc-history-preview-list>div{display:grid!important;grid-template-columns:145px 1fr 90px auto!important;align-items:center!important;gap:10px!important;padding:9px 0!important}
-  #cleaning .rc-history-preview-list p{grid-column:2 / 4!important;margin:2px 0!important}
-  #cleaning .rc-history-actions{grid-column:4!important;grid-row:1 / span 2!important;display:flex!important;gap:6px!important;align-items:center!important}
-  #cleaning .rc-history-actions button{margin:0!important;white-space:nowrap!important}
-  #cleaning .rc-history-panel{padding:16px 20px!important}
-  #cleaning .rc-history-items{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
-  #cleaning .rc-history-item{padding:10px!important}
-}
-@media (min-width: 1400px){#cleaning .rc-rooms{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
-</style>
 </head>
 <body data-layout="auto">
   <section class="auth-screen" id="authScreen" aria-label="Connexion">
     <form class="auth-card" id="authForm" novalidate>
       <img src="./assets/logo-service-technique.png" alt="Service technique" class="auth-logo" data-app-logo="1">
       <h1>Pilotage Service Technique</h1>
-      <p>Base synchronisée entre téléphone et ordinateur.</p><p id="authVersion" class="app-version">Version 147.66 — 20/08/2026</p>
+      <p>Base synchronisée entre téléphone et ordinateur.</p><p id="authVersion" class="app-version">Version 147.67 — 20/08/2026</p>
       <label>Adresse e-mail<input id="authEmail" type="email" autocomplete="username" placeholder="prenom.nom@exemple.fr"></label>
       <label>Mot de passe<input id="authPassword" type="password" autocomplete="current-password"></label>
       <button class="primary" id="authLogin" type="submit">Se connecter</button>
@@ -583,7 +564,7 @@ input, select, textarea, button{
       <button class="nav-btn" data-view="reports"><span>▥</span>Rapports & impressions</button>
       <button class="nav-btn" data-view="settings"><span>⚙</span>Paramètres</button>
     </nav>
-    <div class="sidebar-footer"><button id="logoutBtn" class="ghost small hidden">Déconnexion</button><span id="saveState">Données Supabase uniquement</span><small id="sidebarVersion" class="app-version">Version 147.66 — 20/08/2026</small></div>
+    <div class="sidebar-footer"><button id="logoutBtn" class="ghost small hidden">Déconnexion</button><span id="saveState">Données Supabase uniquement</span><small id="sidebarVersion" class="app-version">Version 147.67 — 20/08/2026</small></div>
   </aside>
   <div class="menu-backdrop" id="menuBackdrop"></div>
 
@@ -1061,7 +1042,7 @@ input, select, textarea, button{
       <article class="panel"><div class="panel-head"><h3>Autres listes déroulantes</h3><p class="muted">Ajoutez ou supprimez des choix sans modifier le code.</p></div><div id="listSettings" class="list-settings"></div></article>
       <article class="panel"><h3>Notifications ménage</h3><label class="toggle-row"><input id="cleaningNotificationsEnabled" type="checkbox"><span><strong>Activer les notifications ménage</strong><small>Vous gardez la maîtrise de la cloche.</small></span></label><div class="toggle-grid compact"><label><input id="cleaningNotifyNever" type="checkbox"> Locaux jamais contrôlés</label><label><input id="cleaningNotifyOverdue" type="checkbox"> Locaux non contrôlés depuis trop longtemps</label><label><input id="cleaningNotifyPlanned" type="checkbox"> Contrôles prévus mais non réalisés</label></div><div class="form-grid"><label>Délai local ménage non contrôlé (jours)<input id="cleaningAlertDays" type="number" min="1" value="30"></label><label>Proximité rendez-vous (jours)<input id="meetingAlertDays" type="number" min="1" value="3"></label></div><p class="hint">Dans la cloche, une alerte ménage peut être marquée traitée, masquée 24 h, rappelée demain, dans 7 jours ou 30 jours, ou supprimée. Une alerte supprimée ne revient que si la situation change.</p></article><article class="panel"><h3>Archivage automatique</h3><p class="hint">Une archive de la semaine précédente est créée automatiquement à l’ouverture. Le 31 août, les compteurs annuels de congés, RTT, récupérations et heures supplémentaires sont clôturés avant l’ouverture de la nouvelle année scolaire.</p></article>
       <article class="panel backup-panel"><h3>Sauvegarde des données</h3><p>La base est enregistrée dans le navigateur. Faites régulièrement une sauvegarde JSON.</p><div><button class="primary" id="exportBackup">Sauvegarde JSON</button><label class="ghost file-label">Restaurer<input type="file" id="importBackup" accept="application/json"></label><button class="ghost" id="restoreReferenceData">Restaurer les données fournies</button><button class="ghost" id="runDiagnostic">Vérifier l’application</button><button class="danger" id="resetData">Réinitialiser</button></div></article>
-      <article class="panel"><h3>À propos</h3><p id="aboutVersion" class="app-version">Version 147.66 — 20/08/2026</p></article><article class="panel sources-panel"><h3>Base réglementaire du catalogue</h3><p>ERP type R, règlement de sécurité incendie (EL 19, DF 10, CH 58, GC 21-22, MS 38, MS 73, R 33), ascenseurs, portes automatiques, appareils de levage, légionelles, radon et équipements sportifs. Validez toujours les contrôles avec le registre de sécurité et les prestataires compétents.</p></article>
+      <article class="panel"><h3>À propos</h3><p id="aboutVersion" class="app-version">Version 147.67 — 20/08/2026</p></article><article class="panel sources-panel"><h3>Base réglementaire du catalogue</h3><p>ERP type R, règlement de sécurité incendie (EL 19, DF 10, CH 58, GC 21-22, MS 38, MS 73, R 33), ascenseurs, portes automatiques, appareils de levage, légionelles, radon et équipements sportifs. Validez toujours les contrôles avec le registre de sécurité et les prestataires compétents.</p></article>
     </section>
   </main>
 
@@ -1123,23 +1104,23 @@ input, select, textarea, button{
   </dialog>
   <dialog id="autoReportWizard" class="modal wizard-modal"><div class="modal-head"><div><h3>Assistant d’envoi automatique</h3><p class="muted">Configuration Microsoft 365 + Supabase</p></div><button type="button" class="icon-btn" id="autoReportWizardClose">×</button></div><div class="wizard-progress"><span class="active">1</span><span>2</span><span>3</span><span>4</span></div><div id="autoReportWizardBody"></div><div class="modal-actions"><button type="button" class="ghost" id="autoReportWizardBack">Précédent</button><button type="button" class="primary" id="autoReportWizardNext">Suivant</button></div></dialog>
   <div id="toast" class="toast"></div>
-  <script src="./navigation.js?v=147.66"></script>
+  <script src="./navigation.js?v=147.67"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=147.66"></script>
-  <script src="./login-bootstrap.js?v=147.66"></script>
+  <script src="./supabase-config.js?v=147.67"></script>
+  <script src="./login-bootstrap.js?v=147.67"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="./logo-data.js"></script>
-  <script src="./app.js?v=147.66"></script>
-  <script src="./notification-center.js?v=147.66"></script>
+  <script src="./app.js?v=147.67"></script>
+  <script src="./notification-center.js?v=147.67"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="./schedule-import.js?v=147.66"></script>
-  <script src="./report-import.js?v=147.66"></script>
+  <script src="./schedule-import.js?v=147.67"></script>
+  <script src="./report-import.js?v=147.67"></script>
 
-  <script src="./weather-waste.js?v=147.66"></script>
+  <script src="./weather-waste.js?v=147.67"></script>
 
-  <script src="./room-cleaning.js?v=147.66"></script>
-  <script src="./room-prep.js?v=147.66"></script>
+  <script src="./room-cleaning.js?v=147.67"></script>
+  <script src="./room-prep.js?v=147.67"></script>
 
   <!-- V147 correctif : ne plus afficher le bandeau permanent de synchronisation calendrier. -->
   <script>

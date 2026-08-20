@@ -1,6 +1,6 @@
 
 (()=>{'use strict';
-const KEY='pst_cleaning_rooms_v103', CK='pst_cleaning_checks_v103', SELKEY='pst_cleaning_room_selection_v147_53', CONFIG_VERSION='147.66';
+const KEY='pst_cleaning_rooms_v103', CK='pst_cleaning_checks_v103', SELKEY='pst_cleaning_room_selection_v147_53', CONFIG_VERSION='147.67';
 const $=x=>document.getElementById(x), uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const room=(number,name,type='Salle')=>({id:uid(),number,name,type});
 const std=(base)=>Array.from({length:9},(_,i)=>room(String(base+i),'','Salle'));

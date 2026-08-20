@@ -14,7 +14,7 @@ function secureAppLogos(){
   });
 }
 
-const APP_VERSION='147.66';
+const APP_VERSION='147.67';
 const APP_BUILD='19/08/2026';
 
 // V25 : les erreurs techniques sont journalisées sans bloquer l'utilisateur.
