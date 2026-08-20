@@ -1,6 +1,6 @@
 
 (()=>{'use strict';
-const KEY='pst_cleaning_rooms_v103', CK='pst_cleaning_checks_v103', SELKEY='pst_cleaning_room_selection_v147_53', CONFIG_VERSION='147.67';
+const KEY='pst_cleaning_rooms_v103', CK='pst_cleaning_checks_v103', SELKEY='pst_cleaning_room_selection_v147_53', CONFIG_VERSION='147.68';
 const $=x=>document.getElementById(x), uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const room=(number,name,type='Salle')=>({id:uid(),number,name,type});
 const std=(base)=>Array.from({length:9},(_,i)=>room(String(base+i),'','Salle'));
@@ -293,8 +293,6 @@ function loadChecks(){
    if(!c)return;
    const source=String(c.sourceMainId||'');
    const cid=String(c.id||'');
-   // V147.66 : un contrôle supprimé reste masqué même si une ancienne copie
-   // serveur ou locale est encore présente pendant une resynchronisation.
    if((source&&deletedIds.has(source))||(cid&&deletedIds.has(cid))||deletedIds.has(cid.replace(/^main-/,'')))return;
    if(source&&mainIds.has(source))return; // le contrôle principal sera reconstruit ci-dessous
    const k=String(c.id||source||'');
@@ -658,8 +656,6 @@ async function deleteHistoryCheck(id){
   const tombstones=new Set((Array.isArray(main?.cleaningDeletedIds)?main.cleaningDeletedIds:[]).map(String).filter(Boolean));
   if(source)tombstones.add(source);
   if(id)tombstones.add(String(id));
-
-  // Suppression de la fiche principale + de tous ses miroirs historiques.
   if(main){
     if(Array.isArray(main.cleaning)) main.cleaning=main.cleaning.filter(x=>String(x?.id||'')!==source && String(x?.id||'')!==String(id));
     main.cleaningDeletedIds=[...tombstones];
@@ -670,11 +666,7 @@ async function deleteHistoryCheck(id){
   });
   localStorage.setItem(CK,JSON.stringify(arr));
   if(main)main.cleaningRoomChecks=clone(arr);
-
-  // On rafraîchit seulement après avoir posé le marqueur de suppression :
-  // loadChecks ne peut donc plus reconstruire le contrôle supprimé.
   renderHistory();renderSelectedHistory();
-
   let res={ok:true,offline:false};
   if(navigator.onLine && window.PSTMainState?.persistStateDirect){
     res=await window.PSTMainState.persistStateDirect({
@@ -687,8 +679,6 @@ async function deleteHistoryCheck(id){
       }
     });
   }else{
-    // Hors connexion : le marqueur de suppression est conservé dans l'état local
-    // et sera envoyé à Supabase dès le retour du réseau.
     window.PSTMainState?.save?.(false);
     res={ok:true,offline:true};
   }

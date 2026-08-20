@@ -1,0 +1,7 @@
+V147.68 — RESTAURATION AFFICHAGE PC/ANDROID + SUPPRESSION CONTROLES
+
+- Retour réel à l’affichage V147.64, avant le CSS global V147.65 qui modifiait toutes les colonnes.
+- Aucun correctif global de mise en page ajouté.
+- Référentiel Extension / Demi-pension conservé.
+- Suppression contrôle ménage sécurisée par marqueur persistant afin d’éviter la réapparition après synchronisation.
+- Cache forcé en 147.68.
