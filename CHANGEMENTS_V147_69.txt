@@ -1,0 +1,7 @@
+V147.69 — REBUILD ANTI-CACHE
+
+- Reconstruction depuis V147.68.
+- Version visible 147.69 partout.
+- Paramètre anti-cache unique sur CSS/JS.
+- Meta no-cache/no-store ajoutées dans index.html.
+- Aucun changement fonctionnel supplémentaire.
